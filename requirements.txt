@@ -3,3 +3,4 @@ prophet
 fastapi
 uvicorn
 matplotlib
+holidays
