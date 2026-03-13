@@ -18,6 +18,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+def home():
+    return {"message": "AI Forecast Service is running 🚀"}
+
 # -----------------------------
 # Forecast endpoints
 # -----------------------------
