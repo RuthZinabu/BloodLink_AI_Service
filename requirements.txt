@@ -1,6 +1,9 @@
 pandas
 prophet
 fastapi
-uvicorn
+uvicorn[standard]
 matplotlib
-holidays
+holidays 
+numpy
+python-dateutil
+pydantic
