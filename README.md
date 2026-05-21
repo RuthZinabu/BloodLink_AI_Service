@@ -1,53 +1,128 @@
-# BloodLink AI Service
+# BloodLink AI Service - Blood Demand Forecasting System
 
-## Overview
+## 🩸 Overview
 
-BloodLink AI Service is an intelligent forecasting system designed to predict blood demand for hospitals and blood banks. Leveraging machine learning with Facebook Prophet, this service provides accurate daily, weekly, monthly, and yearly forecasts for all major blood types (O+, A+, B+, AB+, O-, A-, B-, AB-). The system incorporates Ethiopian holidays and current stock levels to generate actionable shortage alerts, helping healthcare providers optimize blood inventory management and prevent critical shortages.
+**BloodLink AI Service v2.0** is a production-ready forecasting system for blood demand prediction in hospitals and blood banks. The system provides **monthly and yearly forecasts** grouped by blood type and component type, enabling data-driven inventory management.
 
-## Features
+### What Changed in v2.0 ✨
 
-- **Multi-Timeframe Forecasting**: Generate predictions for daily (30 days), weekly (12 weeks), monthly (12 months), and yearly (2 years) horizons.
-- **Blood Type Coverage**: Comprehensive forecasting for all 8 major blood types.
-- **Holiday Integration**: Accounts for Ethiopian public holidays that may affect blood demand patterns.
-- **Stock Alert System**: Real-time shortage alerts when predicted demand exceeds current stock levels.
-- **RESTful API**: FastAPI-based backend providing easy integration with existing healthcare systems.
-- **Machine Learning Powered**: Uses Facebook Prophet for robust time series forecasting with seasonal and trend analysis.
+- ✅ **Simplified Architecture:** Removed daily and weekly forecasting for focused, production-ready monthly/yearly forecasts
+- ✅ **Component-Based Tracking:** Group predictions by blood type AND component type (5 components supported)
+- ✅ **Trend-Based Projection:** Uses 8% annual growth rate for reliable yearly forecasts
+- ✅ **Interactive Dashboard:** Beautiful, responsive UI with Chart.js visualization
+- ✅ **Clean API:** Flexible filtering by blood_type and component_type
+- ✅ **Production-Ready Code:** Optimized queries, proper error handling, zero hardcoding
 
-## Architecture
+## 🎯 Features
 
-The project consists of the following components:
+### Forecasting Capabilities
+- **Monthly Forecasting**: Predict demand for each month, grouped by blood type (8 types) and component (5 types)
+- **Yearly Forecasting**: Project future years using trend-based analysis with configurable growth rate
+- **Flexible Filtering**: Filter by blood type, component type, or view all combinations
+- **Accurate Projections**: Based on simulation dataset aggregation and growth projection
 
-- **API Layer** (`api/`): FastAPI application serving forecast endpoints
-- **Model Layer** (`model/`): Core forecasting logic, holiday data, and stock management
-- **Data Layer** (`data/`): Historical blood demand data and prediction outputs
-- **Model Files** (`model_files/`): Serialized trained Prophet models
-- **Notebooks** (`notebooks/`): Jupyter notebooks for data generation and model training
+### Blood Types & Components Supported
+**Blood Types (8):** O+, O-, A+, A-, B+, B-, AB+, AB-  
+**Components (5):** Whole Blood, Packed Red Cells, Fresh Frozen Plasma, Platelets Concentrate, Cryoprecipitate
 
-## Installation
+### API & Dashboard
+- **RESTful API**: FastAPI-based with Swagger/OpenAPI documentation
+- **Interactive Dashboard**: Real-time charts, data tables, and filters
+- **Metadata Endpoints**: Get available blood types, components, and capabilities
+- **CORS Enabled**: Ready for frontend integration
 
-### Prerequisites
+## 📊 Architecture
 
-- Python 3.8+
-- pip package manager
+```
+BloodLink_AI_Service/
+├── api/main.py                              # FastAPI endpoints (monthly/yearly)
+├── model/forecast_generator.py              # Forecasting logic
+├── data/simulation_data_with_components.csv # Component-based simulation data
+├── dashboard.html                           # Interactive UI
+├── QUICK_REFERENCE.md                       # Quick start guide
+├── FORECASTING_MODULE_V2.md                 # Full documentation
+└── IMPLEMENTATION_SUMMARY.md                # Technical details
+```
 
-### Setup
+## 🚀 Quick Start
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/RuthZinabu/BloodLink_AI_Service.git
-   cd BloodLink_AI_Service
-   ```
+### 1. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
 
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 2. Start API Server
+```bash
+python -m uvicorn api.main:app --reload --port 8000
+```
 
-3. Ensure model files are present in `model_files/` directory (see Model Training section below).
+### 3. Access Dashboard
+Open browser: `http://localhost:8000/dashboard.html`
 
-## Usage
+### 4. View API Docs
+Open browser: `http://localhost:8000/docs` (Swagger UI)
 
-### Running the API Server
+## 📡 API Examples
+
+### Monthly Forecast
+```bash
+# Get all monthly predictions for next 12 months
+curl "http://localhost:8000/forecast/monthly"
+
+# Filter by O+ blood type, Whole Blood component, for 6 months
+curl "http://localhost:8000/forecast/monthly?blood_type=O%2B&component_type=Whole%20Blood&months_ahead=6"
+
+# Response
+{
+  "status": "success",
+  "forecast_type": "monthly",
+  "filters": {"blood_type": "O+", "component_type": "Whole Blood"},
+  "months_ahead": 6,
+  "data": [
+    {
+      "blood_type": "O+",
+      "component_type": "Whole Blood",
+      "month": 6,
+      "month_name": "June",
+      "year": 2026,
+      "predicted_units": 120
+    },
+    ...
+  ]
+}
+```
+
+### Yearly Forecast
+```bash
+# Get yearly predictions for next 3 years
+curl "http://localhost:8000/forecast/yearly"
+
+# Filter by A- blood type, 5 years
+curl "http://localhost:8000/forecast/yearly?blood_type=A-&years_ahead=5"
+
+# Response
+{
+  "status": "success",
+  "forecast_type": "yearly",
+  "filters": {"blood_type": "A-", "component_type": null},
+  "years_ahead": 5,
+  "growth_rate": 0.08,
+  "data": [
+    {
+      "blood_type": "A-",
+      "component_type": "Whole Blood",
+      "year": 2027,
+      "predicted_units": 3456,
+      "growth_rate": 0.08
+    },
+    ...
+  ]
+}
+```
+
+## 🐍 Python Usage
+
+### Monthly Forecast
 
 Start the FastAPI server using the provided script:
 
@@ -91,8 +166,8 @@ Forecast responses include:
 ## Data Sources
 
 ### Historical Data
-- `data/blood_demand_data.csv`: Historical daily blood demand data (synthetic data for demonstration)
-- Generated using statistical distributions with weekend adjustments and emergency spikes
+- `data/download.csv`: Historical blood demand data from the blood bank for real training
+- If `data/download.csv` is unavailable, the system will also look for `data/blood_demand_data.csv`
 
 ### Holiday Data
 - Ethiopian public holidays from 2023-2030
@@ -111,13 +186,15 @@ The forecasting models are trained using Facebook Prophet with the following pro
 3. **Model Training**: Train separate Prophet models for each blood type
 4. **Model Serialization**: Save trained models to `model_files/` directory
 
-To retrain models with new data:
+To retrain models with new real-world data:
 
-1. Update `data/blood_demand_data.csv` with new historical data
-2. Run the training notebook:
+1. Place your historical blood bank demand data in `data/download.csv`
+2. Run the training script:
    ```bash
-   jupyter notebook notebooks/blood_forecast_model.ipynb
+   python train_models.py --data-file data/download.csv
    ```
+
+If your file is named differently, pass its path using `--data-file`.
 
 ## Configuration
 
@@ -142,7 +219,8 @@ BloodLink_AI_Service/
 ├── api/
 │   └── main.py              # FastAPI application
 ├── data/
-│   ├── blood_demand_data.csv    # Historical demand data
+│   ├── download.csv             # Real historical demand data from the blood bank
+│   ├── blood_demand_data.csv    # Optional fallback demand data
 │   └── predicted_demand.csv     # Forecast outputs
 ├── model/
 │   ├── predictor.py         # Core forecasting logic
@@ -150,8 +228,8 @@ BloodLink_AI_Service/
 │   └── stock_data.py        # Current stock levels
 ├── model_files/             # Trained model files
 ├── notebooks/
-│   ├── blood_demand_generation.ipynb  # Data generation
-│   └── blood_forecast_model.ipynb     # Model training
+│   ├── blood_demand_generation.ipynb  # Legacy synthetic data generator (do not use for real data)
+│   └── blood_forecast_model.ipynb     # Model training (use real data in data/download.csv)
 ├── requirements.txt         # Python dependencies
 ├── start.sh                 # Startup script
 └── README.md               # This file
