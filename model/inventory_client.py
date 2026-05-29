@@ -3,7 +3,7 @@ from typing import Dict, Optional
 
 import requests
 
-DEFAULT_INVENTORY_API_BASE_URL = os.environ.get('INVENTORY_API_BASE_URL', 'http://localhost:8000')
+DEFAULT_INVENTORY_API_BASE_URL = os.environ.get('INVENTORY_API_BASE_URL', 'https://bloodlink-backend-bpll.onrender.com')
 DEFAULT_ADMIN_EMAIL = os.environ.get('INVENTORY_ADMIN_EMAIL', 'admin@bloodlink.com')
 DEFAULT_ADMIN_PASSWORD = os.environ.get('INVENTORY_ADMIN_PASSWORD', 'Admin123!')
 AUTH_PATHS = [
