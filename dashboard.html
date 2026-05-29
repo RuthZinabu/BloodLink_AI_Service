@@ -445,6 +445,58 @@
         </div>
 
         <div class="panel">
+            <h2>⚠️ Shortage Prediction</h2>
+
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="shortage-blood-type">Blood Type</label>
+                    <select id="shortage-blood-type">
+                        <option value="">All Blood Types</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="shortage-component-type">Component Type</label>
+                    <select id="shortage-component-type">
+                        <option value="">All Components</option>
+                        <option value="Whole Blood">Whole Blood</option>
+                        <option value="Packed Red Cells">Packed Red Cells</option>
+                        <option value="Fresh Frozen Plasma">Fresh Frozen Plasma</option>
+                        <option value="Platelets Concentrate">Platelets Concentrate</option>
+                        <option value="Cryoprecipitate">Cryoprecipitate</option>
+                    </select>
+                </div>
+            </div>
+
+            <button onclick="loadShortagePrediction()">Load Shortage Prediction</button>
+
+            <div id="shortage-info" class="info-section" style="display: none;"></div>
+
+            <div class="table-container" id="shortage-table-container">
+                <table id="shortageTable">
+                    <thead>
+                        <tr>
+                            <th>Blood Type</th>
+                            <th>Predicted Demand</th>
+                            <th>Available Stock</th>
+                            <th>Shortage</th>
+                        </tr>
+                    </thead>
+                    <tbody id="shortage-table-body">
+                        <tr><td colspan="4" class="no-data">Load shortage prediction to see alerts</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="panel">
             <h2>ℹ️ API Information</h2>
             <div class="info-section">
                 <p><strong>API Base URL:</strong> <code>https://bloodlink-ai-service.onrender.com</code></p>
@@ -834,6 +886,63 @@
                 });
                 growthRow.innerHTML = growthCells.join('');
                 tbody.appendChild(growthRow);
+            });
+        }
+
+        // Load shortage prediction
+        async function loadShortagePrediction() {
+            const bloodType = document.getElementById('shortage-blood-type').value || null;
+            const componentType = document.getElementById('shortage-component-type').value || null;
+
+            const params = new URLSearchParams();
+            if (bloodType) params.append('blood_type', bloodType);
+            if (componentType) params.append('component_type', componentType);
+
+            try {
+                const response = await fetch(`${API_URL}/forecast/shortages?${params}`);
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    updateShortageInfo(result);
+                    updateShortageTable(result.shortages);
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to load shortage prediction');
+            }
+        }
+
+        function updateShortageInfo(result) {
+            const infoSection = document.getElementById('shortage-info');
+            infoSection.style.display = 'block';
+            infoSection.innerHTML = `
+                <p><strong>Forecast Month:</strong> ${result.forecast_month || 'N/A'}</p>
+                <p><strong>Forecast Year:</strong> ${result.forecast_year || 'N/A'}</p>
+                <p><strong>Inventory Source:</strong> ${result.inventory_source || 'N/A'}</p>
+                <p><strong>Status:</strong> ${result.shortages && result.shortages.length > 0 ? '<span style="color:#c53030; font-weight:bold;">Shortages detected</span>' : '<span style="color:#2f855a; font-weight:bold;">No shortages reported</span>'}</p>
+            `;
+        }
+
+        function updateShortageTable(shortages) {
+            const tbody = document.getElementById('shortage-table-body');
+            tbody.innerHTML = '';
+
+            if (!shortages || shortages.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="no-data">No shortage alerts for the selected filters</td></tr>';
+                return;
+            }
+
+            shortages.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${item.blood_type}</strong></td>
+                    <td>${item.predicted_demand}</td>
+                    <td>${item.available_stock}</td>
+                    <td>${item.shortage}</td>
+                `;
+                tbody.appendChild(row);
             });
         }
 
