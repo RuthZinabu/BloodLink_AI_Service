@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "zQnd3fuS1o1-P_jMi7H66"
+uri = "file://BloodLink_AI_Forecasting_System_Documentation.md"
+type = "text"
+title = "BloodLink AI Forecasting System — Full Documentation"
