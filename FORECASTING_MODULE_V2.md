@@ -11,6 +11,7 @@ The Blood Demand Forecasting Module has been completely refactored to provide **
 ✅ **Flexible Filtering** - Filter by blood type (O+, O-, A+, A-, B+, B-, AB+, AB-) and component type  
 ✅ **Trend-Based Projection** - Uses historical data aggregation and growth rate modeling  
 ✅ **Component-Based Tracking** - Supports 5 blood component types  
+✅ **Inventory-Aware Shortage Prediction** - Compare demand to stock using `/forecast/shortages`  
 ✅ **Interactive Dashboard** - Real-time visualization with Chart.js  
 ✅ **RESTful API** - Clean JSON endpoints with query parameters  
 
@@ -180,7 +181,56 @@ curl "http://localhost:8000/forecast/yearly?blood_type=AB%2B&component_type=Fres
 
 ---
 
-### 3. Metadata Endpoints
+### 3. Shortage Prediction Endpoint
+
+**Endpoint:** `GET /forecast/shortages`
+
+**Description:** Predicts inventory shortages for the next calendar month by comparing forecast demand to the current available stock returned by the inventory backend.
+
+**Query Parameters:**
+- `blood_type` (optional): Filter shortage predictions by blood type
+- `component_type` (optional): Filter shortage predictions by component type
+
+**Example Requests:**
+
+```bash
+# Get next month shortage risk across all blood types
+curl "http://localhost:8000/forecast/shortages"
+
+# Filter by O+ and Whole Blood
+curl "http://localhost:8000/forecast/shortages?blood_type=O%2B&component_type=Whole%20Blood"
+```
+
+**Response Format:**
+
+```json
+{
+  "status": "success",
+  "forecast_month": 6,
+  "forecast_year": 2026,
+  "filters": {
+    "blood_type": "O+",
+    "component_type": "Whole Blood"
+  },
+  "current_stock": {
+    "O+": 25,
+    "A+": 10
+  },
+  "shortages": [
+    {
+      "blood_type": "O+",
+      "predicted_demand": 35,
+      "available_stock": 25,
+      "shortage": 10
+    }
+  ],
+  "inventory_source": "http://localhost:8000"
+}
+```
+
+---
+
+### 4. Metadata Endpoints
 
 #### Get Blood Types
 **Endpoint:** `GET /forecast/blood-types`
@@ -429,7 +479,6 @@ python -m uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 - Daily forecasting (`/forecast/daily`)
 - Weekly forecasting (`/forecast/weekly`)
 - Holiday integration
-- Stock-based shortage alerts
 - Prophet model dependency
 
 ### What Changed

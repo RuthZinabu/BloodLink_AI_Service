@@ -19,6 +19,8 @@ COMPONENT_TYPES = [
     "Cryoprecipitate"
 ]
 
+# Forecast constraints
+MAX_FORECAST_YEAR = 2027
 # Default growth rate for yearly projection
 DEFAULT_GROWTH_RATE = 0.08  # 8% annually
 
@@ -37,19 +39,32 @@ class SimulationDataLoader:
         Returns:
             DataFrame with columns: date, blood_type, component_type, demand_units
         """
-        if data_path is None:
-            data_path = os.path.join("data", "simulation_data_with_components.csv")
-        
-        if not os.path.exists(data_path):
+        candidates = []
+        if data_path:
+            candidates.append(data_path)
+        else:
+            candidates.extend([
+                os.path.join('data', 'download.csv'),
+                os.path.join('data', 'simulation_data_with_components.csv'),
+            ])
+
+        for candidate in candidates:
+            if not os.path.exists(candidate):
+                continue
+            df = pd.read_csv(candidate)
+            if {'date', 'blood_type', 'component_type', 'demand_units'}.issubset(df.columns):
+                df['date'] = pd.to_datetime(df['date'])
+                return df
+
+        default_path = os.path.join('data', 'simulation_data_with_components.csv')
+        if not os.path.exists(default_path):
             raise FileNotFoundError(
-                f"Simulation data not found at {data_path}. "
+                f"Simulation data not found at {default_path}. "
                 "Please ensure the simulation dataset with component types exists."
             )
-        
-        df = pd.read_csv(data_path)
+
+        df = pd.read_csv(default_path)
         df['date'] = pd.to_datetime(df['date'])
-        
-        # Validate required columns
         required_cols = ['date', 'blood_type', 'component_type', 'demand_units']
         missing_cols = [col for col in required_cols if col not in df.columns]
         if missing_cols:
@@ -57,7 +72,6 @@ class SimulationDataLoader:
                 f"Missing required columns: {missing_cols}. "
                 "DataFrame must have: date, blood_type, component_type, demand_units"
             )
-        
         return df
 
 
@@ -76,111 +90,249 @@ class MonthlyForecastGenerator:
     
     def _prepare_data(self):
         """Prepare data for monthly forecasting."""
-        # Add month and year columns
         self.df['year'] = self.df['date'].dt.year
         self.df['month'] = self.df['date'].dt.month
         self.df['month_name'] = self.df['date'].dt.strftime('%B')
         self.df['year_month'] = self.df['date'].dt.to_period('M')
-    
+        self.df = self.df.sort_values('date')
+        self.data_end_date = self.df['date'].max()
+
+    def _get_forecast_period(self, months_ahead: int, start_year: Optional[int], start_month: Optional[int]) -> Tuple[int, int, int]:
+        if start_year is None or start_month is None:
+            today = datetime.today()
+            start_year, start_month = today.year, today.month
+
+        if start_year > MAX_FORECAST_YEAR:
+            return start_year, start_month, 0
+
+        months_until_end = (MAX_FORECAST_YEAR - start_year) * 12 + (12 - start_month + 1)
+        months_ahead = min(months_ahead, max(0, months_until_end))
+        return start_year, start_month, months_ahead
+
+    def _get_monthly_profile(self, combo_data: pd.DataFrame) -> pd.Series:
+        if combo_data.empty:
+            return pd.Series(1.0, index=range(1, 13))
+
+        month_avg = combo_data.groupby('month')['demand_units'].mean()
+        if month_avg.empty:
+            return pd.Series(1.0, index=range(1, 13))
+
+        seasonal_index = month_avg / month_avg.mean()
+        full_index = pd.Series(1.0, index=range(1, 13))
+        for month, value in seasonal_index.items():
+            full_index.loc[month] = max(value, 0.1)
+        return full_index
+
     def get_monthly_forecast(
         self,
         blood_type: Optional[str] = None,
         component_type: Optional[str] = None,
-        months_ahead: int = 12
+        months_ahead: int = 12,
+        start_year: Optional[int] = None,
+        start_month: Optional[int] = None
     ) -> List[Dict]:
         """
         Generate monthly forecast for specified blood type and component type.
-        
-        Args:
-            blood_type: Blood type (e.g., 'O+', 'A-'). If None, returns all types.
-            component_type: Component type. If None, returns all types.
-            months_ahead: Number of months to forecast
-            
-        Returns:
-            List of forecast records with format:
-            {
-                'blood_type': str,
-                'component_type': str,
-                'month': int,
-                'month_name': str,
-                'year': int,
-                'predicted_units': int
-            }
         """
-        # Filter data
         filtered_df = self.df.copy()
-        
+
         if blood_type:
             if blood_type not in BLOOD_TYPES:
                 raise ValueError(f"Invalid blood type: {blood_type}. Must be one of {BLOOD_TYPES}")
             filtered_df = filtered_df[filtered_df['blood_type'] == blood_type]
-        
+
         if component_type:
             if component_type not in COMPONENT_TYPES:
                 raise ValueError(f"Invalid component type: {component_type}. Must be one of {COMPONENT_TYPES}")
             filtered_df = filtered_df[filtered_df['component_type'] == component_type]
-        
-        # Group by year-month, blood_type, component_type and sum demand
+
         grouped = filtered_df.groupby(
             ['year_month', 'blood_type', 'component_type']
         )['demand_units'].sum().reset_index()
-        
+
+        if grouped.empty:
+            return []
+
         grouped['year'] = grouped['year_month'].dt.year
         grouped['month'] = grouped['year_month'].dt.month
         grouped['month_name'] = grouped['year_month'].dt.strftime('%B')
-        
-        # Sort by date
         grouped = grouped.sort_values(['year', 'month'])
-        
-        # Generate forecast using simple averaging
+
+        start_year, start_month, months_ahead = self._get_forecast_period(months_ahead, start_year, start_month)
+        if months_ahead <= 0:
+            return []
+
         forecast_records = []
-        
-        # Get unique combinations
         unique_combos = grouped[['blood_type', 'component_type']].drop_duplicates()
-        
+
         for _, combo in unique_combos.iterrows():
             bt = combo['blood_type']
             ct = combo['component_type']
-            
-            # Filter for this combination
+
             combo_data = grouped[
                 (grouped['blood_type'] == bt) & 
                 (grouped['component_type'] == ct)
             ].copy()
-            
-            if len(combo_data) == 0:
+
+            if combo_data.empty:
                 continue
-            
-            # Calculate average demand per month for this combination
-            avg_demand = combo_data['demand_units'].mean()
-            
-            # Get the last known month
-            last_month = combo_data.iloc[-1]
-            current_year = last_month['year']
-            current_month = last_month['month']
-            
-            # Generate forecast for next months_ahead months
-            for i in range(1, months_ahead + 1):
-                current_month += 1
-                if current_month > 12:
-                    current_month = 1
-                    current_year += 1
-                
-                # Apply slight growth trend (8% annually)
+
+            monthly_profile = self._get_monthly_profile(combo_data)
+            last_year_data = combo_data[combo_data['year'] == combo_data['year'].max()]
+            if not last_year_data.empty:
+                base_demand = last_year_data['demand_units'].mean()
+            else:
+                base_demand = combo_data['demand_units'].mean()
+
+            base_demand = max(base_demand, combo_data['demand_units'].mean(), 1)
+
+            forecast_year = start_year
+            forecast_month = start_month
+            for i in range(months_ahead):
+                if i > 0:
+                    forecast_month += 1
+                    if forecast_month > 12:
+                        forecast_month = 1
+                        forecast_year += 1
+
+                month_factor = monthly_profile.get(forecast_month, 1.0)
                 growth_factor = (1 + DEFAULT_GROWTH_RATE) ** (i / 12)
-                predicted = int(avg_demand * growth_factor)
-                
-                month_name = pd.Timestamp(year=current_year, month=current_month, day=1).strftime('%B')
-                
+                predicted = int(round(base_demand * month_factor * growth_factor))
+
                 forecast_records.append({
                     'blood_type': str(bt),
                     'component_type': str(ct),
-                    'month': int(current_month),
-                    'month_name': str(month_name),
-                    'year': int(current_year),
+                    'month': int(forecast_month),
+                    'month_name': pd.Timestamp(year=forecast_year, month=forecast_month, day=1).strftime('%B'),
+                    'year': int(forecast_year),
                     'predicted_units': max(0, int(predicted))
                 })
+
+        return forecast_records
+    
+    def get_monthly_forecast_table(
+        self,
+        blood_type: Optional[str] = None,
+        component_type: Optional[str] = None,
+        months_ahead: int = 12,
+        start_year: Optional[int] = None,
+        start_month: Optional[int] = None
+    ) -> pd.DataFrame:
+        records = self.get_monthly_forecast(blood_type, component_type, months_ahead, start_year, start_month)
+        if not records:
+            return pd.DataFrame()
+        return pd.DataFrame(records)
+
+
+class YearlyForecastGenerator:
+    """Generate yearly forecasts using trend-based projection."""
+    
+    def __init__(self, data_path: Optional[str] = None, growth_rate: float = DEFAULT_GROWTH_RATE):
+        """
+        Initialize yearly forecast generator.
         
+        Args:
+            data_path: Path to simulation dataset
+            growth_rate: Annual growth rate for projection (default 8%)
+        """
+        self.df = SimulationDataLoader.load_simulation_data(data_path)
+        self.growth_rate = growth_rate
+        self._prepare_data()
+    
+    def _prepare_data(self):
+        """Prepare data for yearly forecasting."""
+        self.df['year'] = self.df['date'].dt.year
+        self.df['month'] = self.df['date'].dt.month
+        self.df = self.df.sort_values('date')
+
+    def _aggregate_yearly_demand(self) -> pd.DataFrame:
+        """
+        Aggregate monthly demand into yearly totals for each blood type and component.
+        
+        Returns:
+            DataFrame with columns: year, blood_type, component_type, total_demand
+        """
+        yearly = self.df.groupby(
+            ['year', 'blood_type', 'component_type']
+        )['demand_units'].sum().reset_index()
+        yearly = yearly.rename(columns={'demand_units': 'total_demand'})
+        return yearly.sort_values(['blood_type', 'component_type', 'year'])
+
+    def _get_forecast_years(self, years_ahead: int) -> List[int]:
+        current_year = datetime.today().year
+        if current_year >= MAX_FORECAST_YEAR:
+            return []
+        max_target = min(current_year + years_ahead, MAX_FORECAST_YEAR)
+        return list(range(current_year + 1, max_target + 1))
+
+    def get_yearly_forecast(
+        self,
+        blood_type: Optional[str] = None,
+        component_type: Optional[str] = None,
+        years_ahead: int = 3
+    ) -> List[Dict]:
+        """
+        Generate yearly forecast for specified blood type and component type.
+        Uses trend-based projection with configurable growth rate.
+        """
+        yearly_data = self._aggregate_yearly_demand()
+
+        if blood_type:
+            if blood_type not in BLOOD_TYPES:
+                raise ValueError(f"Invalid blood type: {blood_type}. Must be one of {BLOOD_TYPES}")
+            yearly_data = yearly_data[yearly_data['blood_type'] == blood_type]
+
+        if component_type:
+            if component_type not in COMPONENT_TYPES:
+                raise ValueError(f"Invalid component type: {component_type}. Must be one of {COMPONENT_TYPES}")
+            yearly_data = yearly_data[yearly_data['component_type'] == component_type]
+
+        forecast_years = self._get_forecast_years(years_ahead)
+        if not forecast_years:
+            return []
+
+        forecast_records = []
+        unique_combos = yearly_data[['blood_type', 'component_type']].drop_duplicates()
+
+        for _, combo in unique_combos.iterrows():
+            bt = combo['blood_type']
+            ct = combo['component_type']
+            combo_data = yearly_data[
+                (yearly_data['blood_type'] == bt) & 
+                (yearly_data['component_type'] == ct)
+            ].copy()
+
+            if combo_data.empty:
+                continue
+
+            combo_data = combo_data.sort_values('year')
+            baseline_year = combo_data['year'].max()
+            baseline_demand = combo_data.loc[combo_data['year'] == baseline_year, 'total_demand'].values[0]
+
+            if len(combo_data) > 1:
+                years_span = combo_data['year'].max() - combo_data['year'].min()
+                demand_change = combo_data['total_demand'].iloc[-1] - combo_data['total_demand'].iloc[0]
+                if years_span > 0 and combo_data['total_demand'].iloc[0] > 0:
+                    annual_trend = demand_change / combo_data['total_demand'].iloc[0] / years_span
+                else:
+                    annual_trend = self.growth_rate
+            else:
+                annual_trend = self.growth_rate
+
+            previous_demand = baseline_demand
+            for year in forecast_years:
+                if year <= baseline_year:
+                    continue
+                predicted = int(round(previous_demand * (1 + self.growth_rate)))
+                forecast_records.append({
+                    'blood_type': str(bt),
+                    'component_type': str(ct),
+                    'year': int(year),
+                    'predicted_units': max(0, int(predicted)),
+                    'growth_rate': float(self.growth_rate)
+                })
+                previous_demand = predicted
+
         return forecast_records
     
     def get_monthly_forecast_table(

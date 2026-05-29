@@ -3,7 +3,8 @@ prophet
 fastapi
 uvicorn[standard]
 matplotlib
-holidays 
+holidays
 numpy
 python-dateutil
 pydantic
+requests

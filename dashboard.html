@@ -355,15 +355,21 @@
                     <table id="monthlyTable">
                         <thead>
                             <tr>
-                                <th>Blood Type</th>
-                                <th>Component Type</th>
-                                <th>Month</th>
                                 <th>Year</th>
-                                <th>Predicted Units</th>
+                                <th>Month</th>
+                                <th>Component Type</th>
+                                <th>A+</th>
+                                <th>A-</th>
+                                <th>B+</th>
+                                <th>B-</th>
+                                <th>AB+</th>
+                                <th>AB-</th>
+                                <th>O+</th>
+                                <th>O-</th>
                             </tr>
                         </thead>
                         <tbody id="monthly-table-body">
-                            <tr><td colspan="5" class="no-data">Load data to see predictions</td></tr>
+                            <tr><td colspan="11" class="no-data">Load data to see predictions</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -418,15 +424,20 @@
                     <table id="yearlyTable">
                         <thead>
                             <tr>
-                                <th>Blood Type</th>
-                                <th>Component Type</th>
                                 <th>Year</th>
-                                <th>Predicted Units</th>
-                                <th>Growth Rate</th>
+                                <th>Component Type</th>
+                                <th>A+</th>
+                                <th>A-</th>
+                                <th>B+</th>
+                                <th>B-</th>
+                                <th>AB+</th>
+                                <th>AB-</th>
+                                <th>O+</th>
+                                <th>O-</th>
                             </tr>
                         </thead>
                         <tbody id="yearly-table-body">
-                            <tr><td colspan="5" class="no-data">Load data to see predictions</td></tr>
+                            <tr><td colspan="10" class="no-data">Load data to see predictions</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -691,20 +702,63 @@
             tbody.innerHTML = '';
 
             if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="no-data">No data available</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="11" class="no-data">No data available</td></tr>';
                 return;
             }
 
+            const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+            const groupedRows = {};
+
             data.forEach(item => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${item.blood_type}</td>
-                    <td>${item.component_type}</td>
-                    <td>${item.month_name}</td>
-                    <td>${item.year}</td>
-                    <td><strong>${item.predicted_units}</strong></td>
-                `;
-                tbody.appendChild(row);
+                const key = `${item.year}|${item.month}|${item.component_type}`;
+                if (!groupedRows[key]) {
+                    groupedRows[key] = {
+                        year: item.year,
+                        monthName: item.month_name,
+                        componentType: item.component_type,
+                        month: item.month,
+                        totals: {}
+                    };
+                }
+                groupedRows[key].totals[item.blood_type] = item.predicted_units;
+            });
+
+            const sortedRows = Object.values(groupedRows).sort((a, b) => {
+                if (a.year !== b.year) return a.year - b.year;
+                if (a.month !== b.month) return a.month - b.month;
+                return a.componentType.localeCompare(b.componentType);
+            });
+
+            // Group rows by year and month for shared year/month cells
+            const monthGroups = {};
+            sortedRows.forEach(rowData => {
+                const key = `${rowData.year}|${rowData.month}`;
+                if (!monthGroups[key]) {
+                    monthGroups[key] = [];
+                }
+                monthGroups[key].push(rowData);
+            });
+
+            Object.values(monthGroups).forEach(groupRows => {
+                groupRows.forEach((rowData, index) => {
+                    const row = document.createElement('tr');
+                    const cells = [];
+
+                    if (index === 0) {
+                        const rowSpan = groupRows.length;
+                        cells.push(`<td rowspan="${rowSpan}">${rowData.year}</td>`);
+                        cells.push(`<td rowspan="${rowSpan}">${rowData.monthName}</td>`);
+                    }
+
+                    cells.push(`<td>${rowData.componentType}</td>`);
+                    bloodTypes.forEach(type => {
+                        const value = rowData.totals[type];
+                        cells.push(`<td>${value != null ? `<strong>${value}</strong>` : ''}</td>`);
+                    });
+
+                    row.innerHTML = cells.join('');
+                    tbody.appendChild(row);
+                });
             });
         }
 
@@ -714,20 +768,72 @@
             tbody.innerHTML = '';
 
             if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="no-data">No data available</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" class="no-data">No data available</td></tr>';
                 return;
             }
 
+            const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+            const groupedRows = {};
+            const growthRates = {};
+
             data.forEach(item => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${item.blood_type}</td>
-                    <td>${item.component_type}</td>
-                    <td>${item.year}</td>
-                    <td><strong>${item.predicted_units}</strong></td>
-                    <td>${(item.growth_rate * 100).toFixed(1)}%</td>
-                `;
-                tbody.appendChild(row);
+                const key = `${item.year}|${item.component_type}`;
+                if (!groupedRows[key]) {
+                    groupedRows[key] = {
+                        year: item.year,
+                        componentType: item.component_type,
+                        totals: {}
+                    };
+                }
+                groupedRows[key].totals[item.blood_type] = item.predicted_units;
+                if (!growthRates[item.year]) {
+                    growthRates[item.year] = item.growth_rate;
+                }
+            });
+
+            const sortedRows = Object.values(groupedRows).sort((a, b) => {
+                if (a.year !== b.year) return a.year - b.year;
+                return a.componentType.localeCompare(b.componentType);
+            });
+
+            const yearGroups = {};
+            sortedRows.forEach(rowData => {
+                const key = `${rowData.year}`;
+                if (!yearGroups[key]) {
+                    yearGroups[key] = [];
+                }
+                yearGroups[key].push(rowData);
+            });
+
+            Object.entries(yearGroups).forEach(([year, groupRows]) => {
+                groupRows.forEach((rowData, index) => {
+                    const row = document.createElement('tr');
+                    const cells = [];
+
+                    if (index === 0) {
+                        const rowSpan = groupRows.length + 1; // include growth rate row
+                        cells.push(`<td rowspan="${rowSpan}">${year}</td>`);
+                    }
+
+                    cells.push(`<td>${rowData.componentType}</td>`);
+                    bloodTypes.forEach(type => {
+                        const value = rowData.totals[type];
+                        cells.push(`<td>${value != null ? `<strong>${value}</strong>` : ''}</td>`);
+                    });
+
+                    row.innerHTML = cells.join('');
+                    tbody.appendChild(row);
+                });
+
+                // Add growth rate row for the year
+                const growthRow = document.createElement('tr');
+                const growthCells = [`<td>GROWTH RATE</td>`];
+                bloodTypes.forEach(type => {
+                    const growthValue = growthRates[year];
+                    growthCells.push(`<td>${growthValue != null ? `${(growthValue * 100).toFixed(1)}%` : ''}</td>`);
+                });
+                growthRow.innerHTML = growthCells.join('');
+                tbody.appendChild(growthRow);
             });
         }
 

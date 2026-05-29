@@ -19,6 +19,7 @@
 - **Monthly Forecasting**: Predict demand for each month, grouped by blood type (8 types) and component (5 types)
 - **Yearly Forecasting**: Project future years using trend-based analysis with configurable growth rate
 - **Flexible Filtering**: Filter by blood type, component type, or view all combinations
+- **Inventory-Aware Shortage Prediction**: Compare next month demand to available stock via connected inventory backend
 - **Accurate Projections**: Based on simulation dataset aggregation and growth projection
 
 ### Blood Types & Components Supported
@@ -120,6 +121,16 @@ curl "http://localhost:8000/forecast/yearly?blood_type=A-&years_ahead=5"
 }
 ```
 
+### Shortage Prediction
+
+```bash
+# Get next month shortage risk across all blood types
+curl "http://localhost:8000/forecast/shortages"
+
+# Filter by O+ and Whole Blood
+curl "http://localhost:8000/forecast/shortages?blood_type=O%2B&component_type=Whole%20Blood"
+```
+
 ## 🐍 Python Usage
 
 ### Monthly Forecast
@@ -146,22 +157,27 @@ Once running, visit `http://localhost:8000/docs` for interactive Swagger UI docu
 
 ### Forecast Endpoints
 
-- `GET /forecast/daily` - Daily forecast for next 30 days
-- `GET /forecast/weekly` - Weekly aggregated forecast for next 12 weeks
-- `GET /forecast/monthly` - Monthly aggregated forecast for next 12 months
-- `GET /forecast/yearly` - Yearly aggregated forecast for next 2 years
+- `GET /forecast/monthly` - Monthly aggregated forecast through the end of 2027
+- `GET /forecast/yearly` - Yearly aggregated forecast through the end of 2027
 
 ### Alert Endpoints
 
-- `GET /forecast/shortages` - Critical blood shortages for next 7 days
+- `GET /forecast/shortages` - Shortage prediction for the next calendar month based on current inventory
 
 ### Response Format
 
-Forecast responses include:
-- `date`: Forecast date
-- `holiday`: Holiday name (if applicable)
-- Blood type quantities: `O+`, `A+`, `B+`, `AB+`, `O-`, `A-`, `B-`, `AB-`
-- `alerts`: List of shortage alerts (when predicted demand > current stock)
+Forecast endpoints return JSON with:
+- `status`: `success` or `error`
+- `forecast_type`: `monthly` or `yearly`
+- `filters`: selected blood type and component filters
+- `months_ahead` / `years_ahead`: requested forecast horizon
+- `data`: list of forecast records
+
+Shortage endpoint returns:
+- `forecast_month`, `forecast_year`
+- `current_stock`: available inventory by blood type
+- `shortages`: shortage records when demand exceeds stock
+- `inventory_source`: backend inventory API URL
 
 ## Data Sources
 
@@ -174,8 +190,8 @@ Forecast responses include:
 - Integrated into Prophet models for improved forecast accuracy
 
 ### Stock Data
-- Current blood stock levels (currently hardcoded in `model/stock_data.py`)
-- Can be updated to connect to real inventory systems
+- Current blood stock is now retrieved dynamically from an inventory backend via the `/api/inventory` API
+- Admin credentials are used for authentication and shortage calculations
 
 ## Model Training
 

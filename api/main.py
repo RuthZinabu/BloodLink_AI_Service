@@ -1,8 +1,13 @@
+import os
+from datetime import datetime
+
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from model.forecast_generator import MonthlyForecastGenerator, YearlyForecastGenerator
+from model.inventory_client import fetch_inventory_stock, InventoryIntegrationError
 from typing import Optional, List
-import pandas as pd
+
+INVENTORY_API_BASE_URL = os.environ.get('INVENTORY_API_BASE_URL', 'http://localhost:8000')
 
 app = FastAPI(
     title="Blood Demand Forecast API",
@@ -32,6 +37,7 @@ def home():
         "endpoints": [
             "/forecast/monthly",
             "/forecast/yearly",
+            "/forecast/shortages",
             "/docs"
         ]
     }
@@ -82,6 +88,90 @@ def forecast_monthly(
             },
             "months_ahead": months_ahead,
             "data": forecast_data
+        }
+    except ValueError as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+# ========================================
+# Shortage Prediction Endpoint
+# ========================================
+
+@app.get("/forecast/shortages")
+def forecast_shortages(
+    blood_type: Optional[str] = Query(None, description="Filter by blood type for shortage estimation"),
+    component_type: Optional[str] = Query(None, description="Filter by component type for shortage estimation")
+):
+    """
+    Predict blood shortages for the next calendar month by comparing forecast demand to current inventory.
+    """
+    today = datetime.today()
+    next_month = today.month + 1
+    next_year = today.year
+    if next_month > 12:
+        next_month = 1
+        next_year += 1
+
+    if next_year > 2027:
+        return {
+            "status": "error",
+            "message": "Shortage predictions are limited to end of year 2027."
+        }
+
+    try:
+        forecast_data = monthly_gen.get_monthly_forecast(
+            blood_type=blood_type,
+            component_type=component_type,
+            months_ahead=1,
+            start_year=next_year,
+            start_month=next_month
+        )
+
+        if not forecast_data:
+            return {
+                "status": "success",
+                "forecast_month": next_month,
+                "forecast_year": next_year,
+                "current_stock": {},
+                "shortages": [],
+                "message": "No forecast data available for next month."
+            }
+
+        stock = fetch_inventory_stock(base_url=INVENTORY_API_BASE_URL)
+        demand_by_blood_type = {}
+        for record in forecast_data:
+            bt = record['blood_type']
+            demand_by_blood_type[bt] = demand_by_blood_type.get(bt, 0) + record['predicted_units']
+
+        shortages = []
+        for bt, predicted in demand_by_blood_type.items():
+            available = stock.get(bt, 0)
+            if predicted > available:
+                shortages.append({
+                    'blood_type': bt,
+                    'predicted_demand': predicted,
+                    'available_stock': available,
+                    'shortage': predicted - available
+                })
+
+        return {
+            "status": "success",
+            "forecast_month": next_month,
+            "forecast_year": next_year,
+            "filters": {
+                "blood_type": blood_type,
+                "component_type": component_type
+            },
+            "current_stock": stock,
+            "shortages": shortages,
+            "inventory_source": INVENTORY_API_BASE_URL
+        }
+    except InventoryIntegrationError as e:
+        return {
+            "status": "error",
+            "message": str(e)
         }
     except ValueError as e:
         return {
