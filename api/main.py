@@ -213,7 +213,7 @@ def forecast_shortages(
 def forecast_yearly(
     blood_type: Optional[str] = Query(None, description="Filter by blood type (e.g., O+, A-, B+, AB+, etc.)"),
     component_type: Optional[str] = Query(None, description="Filter by component type (e.g., Whole Blood, Packed Red Cells, etc.)"),
-    years_ahead: int = Query(3, ge=1, le=10, description="Number of years to forecast (1-10, default 3)")
+    years_ahead: int = Query(1, ge=1, le=10, description="Number of years to forecast (1-10, default 1)")
 ):
     """
     Return yearly blood demand forecast using trend-based projection.
