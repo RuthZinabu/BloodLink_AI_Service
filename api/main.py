@@ -148,15 +148,20 @@ def forecast_shortages(
             bt = record['blood_type']
             demand_by_blood_type[bt] = demand_by_blood_type.get(bt, 0) + record['predicted_units']
 
+        shortage_by_blood_type = {}
         shortages = []
-        for bt, predicted in demand_by_blood_type.items():
+        all_blood_types = set(list(demand_by_blood_type.keys()) + list(stock.keys()))
+        for bt in all_blood_types:
+            predicted = demand_by_blood_type.get(bt, 0)
             available = stock.get(bt, 0)
-            if predicted > available:
+            shortage = max(0, predicted - available)
+            shortage_by_blood_type[bt] = shortage
+            if shortage > 0:
                 shortages.append({
                     'blood_type': bt,
                     'predicted_demand': predicted,
                     'available_stock': available,
-                    'shortage': predicted - available
+                    'shortage': shortage
                 })
 
         return {
@@ -167,6 +172,9 @@ def forecast_shortages(
                 "blood_type": blood_type,
                 "component_type": component_type
             },
+            "predicted_by_blood_type": demand_by_blood_type,
+            "available_by_blood_type": stock,
+            "shortage_by_blood_type": shortage_by_blood_type,
             "current_stock": stock,
             "shortages": shortages,
             "inventory_source": INVENTORY_API_BASE_URL

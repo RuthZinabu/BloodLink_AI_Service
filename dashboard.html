@@ -290,6 +290,41 @@
             font-size: 0.95em;
         }
 
+        .shortage-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .summary-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        }
+
+        .summary-card h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.05em;
+        }
+
+        .summary-card table {
+            width: 100%;
+        }
+
+        .summary-card th,
+        .summary-card td {
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+            font-size: 0.9em;
+        }
+
+        .summary-card tbody tr:nth-child(even) {
+            background: #fff;
+        }
+
         .no-data {
             text-align: center;
             padding: 40px 20px;
@@ -479,20 +514,46 @@
 
             <div id="shortage-info" class="info-section" style="display: none;"></div>
 
-            <div class="table-container" id="shortage-table-container">
-                <table id="shortageTable">
-                    <thead>
-                        <tr>
-                            <th>Blood Type</th>
-                            <th>Predicted Demand</th>
-                            <th>Available Stock</th>
-                            <th>Shortage</th>
-                        </tr>
-                    </thead>
-                    <tbody id="shortage-table-body">
-                        <tr><td colspan="4" class="no-data">Load shortage prediction to see alerts</td></tr>
-                    </tbody>
-                </table>
+            <div class="shortage-summary-grid">
+                <div class="summary-card">
+                    <h3>Predicted Demand</h3>
+                    <div class="table-container">
+                        <table id="shortage-predicted-table">
+                            <thead>
+                                <tr><th>Blood Type</th><th>Predicted</th></tr>
+                            </thead>
+                            <tbody id="shortage-predicted-body">
+                                <tr><td colspan="2" class="no-data">Load shortage prediction</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <h3>Available Stock</h3>
+                    <div class="table-container">
+                        <table id="shortage-available-table">
+                            <thead>
+                                <tr><th>Blood Type</th><th>Available</th></tr>
+                            </thead>
+                            <tbody id="shortage-available-body">
+                                <tr><td colspan="2" class="no-data">Load shortage prediction</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <h3>Shortage</h3>
+                    <div class="table-container">
+                        <table id="shortage-summary-table">
+                            <thead>
+                                <tr><th>Blood Type</th><th>Shortage</th></tr>
+                            </thead>
+                            <tbody id="shortage-summary-body">
+                                <tr><td colspan="2" class="no-data">Load shortage prediction</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -826,7 +887,6 @@
 
             const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
             const groupedRows = {};
-            const growthRates = {};
 
             data.forEach(item => {
                 const key = `${item.year}|${item.component_type}`;
@@ -838,9 +898,6 @@
                     };
                 }
                 groupedRows[key].totals[item.blood_type] = item.predicted_units;
-                if (!growthRates[item.year]) {
-                    growthRates[item.year] = item.growth_rate;
-                }
             });
 
             const sortedRows = Object.values(groupedRows).sort((a, b) => {
@@ -863,7 +920,7 @@
                     const cells = [];
 
                     if (index === 0) {
-                        const rowSpan = groupRows.length + 1; // include growth rate row
+                        const rowSpan = groupRows.length;
                         cells.push(`<td rowspan="${rowSpan}">${year}</td>`);
                     }
 
@@ -876,16 +933,6 @@
                     row.innerHTML = cells.join('');
                     tbody.appendChild(row);
                 });
-
-                // Add growth rate row for the year
-                const growthRow = document.createElement('tr');
-                const growthCells = [`<td>GROWTH RATE</td>`];
-                bloodTypes.forEach(type => {
-                    const growthValue = growthRates[year];
-                    growthCells.push(`<td>${growthValue != null ? `${(growthValue * 100).toFixed(1)}%` : ''}</td>`);
-                });
-                growthRow.innerHTML = growthCells.join('');
-                tbody.appendChild(growthRow);
             });
         }
 
@@ -904,7 +951,7 @@
 
                 if (result.status === 'success') {
                     updateShortageInfo(result);
-                    updateShortageTable(result.shortages);
+                    updateShortageTables(result);
                 } else {
                     alert('Error: ' + result.message);
                 }
@@ -925,26 +972,44 @@
             `;
         }
 
-        function updateShortageTable(shortages) {
-            const tbody = document.getElementById('shortage-table-body');
+        function updateShortageTables(result) {
+            updateSummaryTable('shortage-predicted-body', result.predicted_by_blood_type);
+            updateSummaryTable('shortage-available-body', result.available_by_blood_type);
+            updateSummaryTable('shortage-summary-body', result.shortage_by_blood_type, true);
+        }
+
+        function updateSummaryTable(bodyId, data, hideZero = false) {
+            const tbody = document.getElementById(bodyId);
             tbody.innerHTML = '';
 
-            if (!shortages || shortages.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="no-data">No shortage alerts for the selected filters</td></tr>';
+            if (!data || Object.keys(data).length === 0) {
+                tbody.innerHTML = '<tr><td colspan="2" class="no-data">No data available</td></tr>';
                 return;
             }
 
-            shortages.forEach(item => {
+            const bloodTypes = Object.keys(data).sort();
+            bloodTypes.forEach(bt => {
+                const value = data[bt];
+                if (hideZero && value === 0) {
+                    return;
+                }
                 const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td><strong>${item.blood_type}</strong></td>
-                    <td>${item.predicted_demand}</td>
-                    <td>${item.available_stock}</td>
-                    <td>${item.shortage}</td>
-                `;
+                row.innerHTML = `<td><strong>${bt}</strong></td><td>${value}</td>`;
                 tbody.appendChild(row);
             });
+
+            if (!tbody.children.length) {
+                tbody.innerHTML = '<tr><td colspan="2" class="no-data">No shortages found</td></tr>';
+            }
         }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeCharts();
+            // Load default data
+            loadMonthlyForecast();
+            loadYearlyForecast();
+        });
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {

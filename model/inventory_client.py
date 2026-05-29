@@ -85,12 +85,15 @@ def fetch_inventory_stock(base_url: str = DEFAULT_INVENTORY_API_BASE_URL,
         )
 
     data = response.json()
+    if isinstance(data, dict) and isinstance(data.get('by_blood_type'), dict):
+        return {bt: int(count) for bt, count in data['by_blood_type'].items()}
+
     if isinstance(data, dict) and 'units' in data and isinstance(data['units'], list):
         units = data['units']
     elif isinstance(data, list):
         units = data
     else:
-        raise InventoryIntegrationError('Unexpected inventory response format. Expected "units" list.')
+        raise InventoryIntegrationError('Unexpected inventory response format. Expected "by_blood_type" or "units" list.')
 
     stock: Dict[str, int] = {}
     for unit in units:
