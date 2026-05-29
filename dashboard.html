@@ -290,39 +290,81 @@
             font-size: 0.95em;
         }
 
-        .shortage-summary-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 20px;
+        .shortage-matrix-wrap {
             margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
         }
 
-        .summary-card {
+        .shortage-matrix-card {
             background: #f8f9fa;
             border-radius: 10px;
-            padding: 15px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+            padding: 16px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            overflow-x: auto;
         }
 
-        .summary-card h3 {
+        .shortage-matrix-card h3 {
             color: #333;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             font-size: 1.05em;
         }
 
-        .summary-card table {
+        .shortage-matrix {
             width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82em;
         }
 
-        .summary-card th,
-        .summary-card td {
-            padding: 8px;
-            border-bottom: 1px solid #ddd;
-            font-size: 0.9em;
+        .shortage-matrix th {
+            background: #2d3748;
+            color: #fff;
+            padding: 8px 10px;
+            text-align: center;
+            border: 1px solid #4a5568;
+            white-space: nowrap;
         }
 
-        .summary-card tbody tr:nth-child(even) {
+        .shortage-matrix th.corner {
+            background: #1a202c;
+            text-align: left;
+            font-size: 0.78em;
+            line-height: 1.4;
+        }
+
+        .shortage-matrix td {
+            padding: 8px 10px;
+            text-align: center;
+            border: 1px solid #ddd;
+            vertical-align: middle;
+        }
+
+        .shortage-matrix td.component-label {
+            background: #1a202c;
+            color: #fff;
+            font-weight: 600;
+            text-align: left;
+            white-space: nowrap;
+            padding: 10px 12px;
+        }
+
+        .shortage-matrix td.cell-value {
             background: #fff;
+        }
+
+        .shortage-matrix td.cell-value.has-shortage {
+            background: #fff5f5;
+            color: #c53030;
+            font-weight: 700;
+        }
+
+        .shortage-matrix td.cell-value.no-shortage {
+            color: #2f855a;
+        }
+
+        .shortage-matrix tbody tr:hover td:not(.component-label) {
+            background: #ebf4ff;
         }
 
         .no-data {
@@ -514,44 +556,26 @@
 
             <div id="shortage-info" class="info-section" style="display: none;"></div>
 
-            <div class="shortage-summary-grid">
-                <div class="summary-card">
-                    <h3>Predicted Demand</h3>
-                    <div class="table-container">
-                        <table id="shortage-predicted-table">
-                            <thead>
-                                <tr><th>Blood Type</th><th>Predicted</th></tr>
-                            </thead>
-                            <tbody id="shortage-predicted-body">
-                                <tr><td colspan="2" class="no-data">Load shortage prediction</td></tr>
-                            </tbody>
-                        </table>
+            <div class="shortage-matrix-wrap">
+                <!-- Predicted Demand Matrix -->
+                <div class="shortage-matrix-card">
+                    <h3>📊 Predicted Demand (Units)</h3>
+                    <div id="shortage-predicted-matrix">
+                        <p class="no-data">Load shortage prediction to view data</p>
                     </div>
                 </div>
-                <div class="summary-card">
-                    <h3>Available Stock</h3>
-                    <div class="table-container">
-                        <table id="shortage-available-table">
-                            <thead>
-                                <tr><th>Blood Type</th><th>Available</th></tr>
-                            </thead>
-                            <tbody id="shortage-available-body">
-                                <tr><td colspan="2" class="no-data">Load shortage prediction</td></tr>
-                            </tbody>
-                        </table>
+                <!-- Available Stock Matrix -->
+                <div class="shortage-matrix-card">
+                    <h3>🏦 Available Stock (Units)</h3>
+                    <div id="shortage-available-matrix">
+                        <p class="no-data">Load shortage prediction to view data</p>
                     </div>
                 </div>
-                <div class="summary-card">
-                    <h3>Shortage</h3>
-                    <div class="table-container">
-                        <table id="shortage-summary-table">
-                            <thead>
-                                <tr><th>Blood Type</th><th>Shortage</th></tr>
-                            </thead>
-                            <tbody id="shortage-summary-body">
-                                <tr><td colspan="2" class="no-data">Load shortage prediction</td></tr>
-                            </tbody>
-                        </table>
+                <!-- Shortage Matrix -->
+                <div class="shortage-matrix-card">
+                    <h3>⚠️ Shortage (Units)</h3>
+                    <div id="shortage-shortage-matrix">
+                        <p class="no-data">Load shortage prediction to view data</p>
                     </div>
                 </div>
             </div>
@@ -987,35 +1011,66 @@
             `;
         }
 
+        const BLOOD_TYPE_ORDER = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+        const COMPONENT_ORDER = [
+            'Whole Blood',
+            'Packed Red Cells',
+            'Fresh Frozen Plasma',
+            'Platelets Concentrate',
+            'Cryoprecipitate'
+        ];
+
         function updateShortageTables(result) {
-            updateSummaryTable('shortage-predicted-body', result.predicted_by_blood_type);
-            updateSummaryTable('shortage-available-body', result.available_by_blood_type);
-            updateSummaryTable('shortage-summary-body', result.shortage_by_blood_type, true);
+            buildMatrixTable(
+                'shortage-predicted-matrix',
+                result.predicted_by_blood_and_component,
+                'predicted'
+            );
+            buildMatrixTable(
+                'shortage-available-matrix',
+                result.available_by_blood_and_component,
+                'available'
+            );
+            buildMatrixTable(
+                'shortage-shortage-matrix',
+                result.shortage_by_blood_and_component,
+                'shortage'
+            );
         }
 
-        function updateSummaryTable(bodyId, data, hideZero = false) {
-            const tbody = document.getElementById(bodyId);
-            tbody.innerHTML = '';
+        function buildMatrixTable(containerId, data, mode) {
+            const container = document.getElementById(containerId);
 
             if (!data || Object.keys(data).length === 0) {
-                tbody.innerHTML = '<tr><td colspan="2" class="no-data">No data available</td></tr>';
+                container.innerHTML = '<p class="no-data">No data available</p>';
                 return;
             }
 
-            const bloodTypes = Object.keys(data).sort();
-            bloodTypes.forEach(bt => {
-                const value = data[bt];
-                if (hideZero && value === 0) {
-                    return;
-                }
-                const row = document.createElement('tr');
-                row.innerHTML = `<td><strong>${bt}</strong></td><td>${value}</td>`;
-                tbody.appendChild(row);
+            // Determine which blood types are present
+            const presentBTs = BLOOD_TYPE_ORDER.filter(bt => data[bt] !== undefined);
+
+            let html = '<table class="shortage-matrix"><thead><tr>';
+            html += `<th class="corner">COMPONENT<br>TYPE</th>`;
+            presentBTs.forEach(bt => {
+                html += `<th>${bt}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            COMPONENT_ORDER.forEach(ct => {
+                html += `<tr><td class="component-label">${ct}</td>`;
+                presentBTs.forEach(bt => {
+                    const val = (data[bt] && data[bt][ct] !== undefined) ? data[bt][ct] : 0;
+                    let cls = 'cell-value';
+                    if (mode === 'shortage') {
+                        cls += val > 0 ? ' has-shortage' : ' no-shortage';
+                    }
+                    html += `<td class="${cls}">${val}</td>`;
+                });
+                html += '</tr>';
             });
 
-            if (!tbody.children.length) {
-                tbody.innerHTML = '<tr><td colspan="2" class="no-data">No shortages found</td></tr>';
-            }
+            html += '</tbody></table>';
+            container.innerHTML = html;
         }
 
         // Initialize on page load
