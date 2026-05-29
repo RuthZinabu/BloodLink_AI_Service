@@ -1,8 +1,10 @@
 import os
 from datetime import datetime
+from pathlib import Path
 
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from model.forecast_generator import MonthlyForecastGenerator, YearlyForecastGenerator
 from model.inventory_client import fetch_inventory_stock, fetch_inventory_breakdown, InventoryIntegrationError
 from typing import Optional, List
@@ -31,19 +33,12 @@ app.add_middleware(
 monthly_gen = MonthlyForecastGenerator()
 yearly_gen = YearlyForecastGenerator()
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 def home():
-    return {
-        "message": "AI Forecast Service is running 🚀",
-        "version": "2.0.0",
-        "description": "Monthly and Yearly blood demand forecasting",
-        "endpoints": [
-            "/forecast/monthly",
-            "/forecast/yearly",
-            "/forecast/shortages",
-            "/docs"
-        ]
-    }
+    dashboard_path = Path(__file__).parent.parent / "dashboard.html"
+    if dashboard_path.exists():
+        return HTMLResponse(content=dashboard_path.read_text())
+    return HTMLResponse(content="<h1>Blood Demand Forecast API is running</h1><p>Visit <a href='/docs'>/docs</a> for the API documentation.</p>")
 
 # ========================================
 # Monthly Forecast Endpoints
