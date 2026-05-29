@@ -373,6 +373,30 @@
             color: #999;
             font-style: italic;
         }
+
+        #api-error-banner {
+            display: none;
+            background: #fff5f5;
+            border: 1px solid #fc8181;
+            border-left: 5px solid #c53030;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            color: #742a2a;
+        }
+
+        #api-error-banner strong {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 1em;
+        }
+
+        #api-error-banner code {
+            background: #fed7d7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.88em;
+        }
     </style>
 </head>
 <body>
@@ -381,6 +405,11 @@
             <h1>🩸 Blood Demand Forecasting Dashboard</h1>
             <p class="subtitle">AI-Powered Predictive Analytics for Blood Bank Management</p>
         </header>
+
+        <div id="api-error-banner">
+            <strong>⚠️ Cannot reach the forecast API</strong>
+            <span id="api-error-detail"></span>
+        </div>
 
         <div class="dashboard-grid">
             <!-- Monthly Forecast Panel -->
@@ -602,7 +631,19 @@
     </div>
 
     <script>
-        const API_URL = '';
+        // Auto-detect the correct API base URL.
+        // • Served by FastAPI on port 5000 → relative URLs work fine.
+        // • Accessed via Replit proxy (no explicit port / HTTPS) → relative URLs work fine.
+        // • Opened from a different dev server (e.g. VS Code Live Server on :5500) →
+        //   point to the FastAPI server on the same host at port 5000.
+        function detectApiUrl() {
+            const { protocol, hostname, port } = window.location;
+            if (!port || port === '5000' || port === '443' || port === '80') {
+                return '';
+            }
+            return `${protocol}//${hostname}:5000`;
+        }
+        const API_URL = detectApiUrl();
         let monthlyChart = null;
         let yearlyChart = null;
         const CURRENT_YEAR = new Date().getFullYear();
@@ -693,11 +734,11 @@
                     updateMonthlyChart(result.data);
                     updateMonthlyTable(result.data);
                 } else {
-                    alert('Error: ' + result.message);
+                    showBanner('Error: ' + result.message);
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Failed to load forecast data');
+                showApiError(error);
             }
         }
 
@@ -734,18 +775,18 @@
                     updateYearlyChart(result.data);
                     updateYearlyTable(result.data);
                 } else {
-                    alert('Error: ' + result.message);
+                    showBanner('Error: ' + result.message);
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Failed to load forecast data');
+                showApiError(error);
             }
         }
 
         // Update monthly chart
         function updateMonthlyChart(data) {
             if (!data || data.length === 0) {
-                alert('No data available for the selected filters');
+                showBanner('No data available for the selected filters.');
                 return;
             }
 
@@ -800,7 +841,7 @@
         // Update yearly chart
         function updateYearlyChart(data) {
             if (!data || data.length === 0) {
-                alert('No data available for the selected filters');
+                showBanner('No data available for the selected filters.');
                 return;
             }
 
@@ -992,11 +1033,11 @@
                     updateShortageInfo(result);
                     updateShortageTables(result);
                 } else {
-                    alert('Error: ' + result.message);
+                    showBanner('Error: ' + result.message);
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Failed to load shortage prediction');
+                showApiError(error);
             }
         }
 
@@ -1071,6 +1112,33 @@
 
             html += '</tbody></table>';
             container.innerHTML = html;
+        }
+
+        // ─── Error helpers ────────────────────────────────────────────────
+        function showBanner(msg) {
+            const banner = document.getElementById('api-error-banner');
+            document.getElementById('api-error-detail').textContent = msg;
+            banner.style.display = 'block';
+            setTimeout(() => { banner.style.display = 'none'; }, 8000);
+        }
+
+        function showApiError(err) {
+            const currentPort = window.location.port;
+            const isWrongOrigin = currentPort && currentPort !== '5000' && currentPort !== '443' && currentPort !== '80';
+
+            let msg;
+            if (isWrongOrigin) {
+                msg = `The dashboard must be accessed through the FastAPI server, not a separate file server. `
+                    + `Open http://${window.location.hostname}:5000 in your browser, or use the Replit preview tab. `
+                    + `(Currently at port ${currentPort} — API expected on port 5000.)`;
+            } else {
+                msg = `Could not reach the API at "${API_URL || window.location.origin}". `
+                    + `Make sure the FastAPI server is running (bash start.sh). Error: ${err.message}`;
+            }
+
+            const banner = document.getElementById('api-error-banner');
+            document.getElementById('api-error-detail').innerHTML = msg;
+            banner.style.display = 'block';
         }
 
         // Initialize on page load
