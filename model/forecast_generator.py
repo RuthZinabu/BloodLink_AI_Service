@@ -463,12 +463,13 @@ class YearlyForecastGenerator:
             else:
                 annual_change_rate = self.growth_rate
             
-            # Generate forecast for years_ahead
-            previous_demand = baseline_demand
+            # Generate forecast for years_ahead starting from current_year + 1
+            current_year = datetime.today().year
             for i in range(1, years_ahead + 1):
-                forecast_year = baseline_year + i
-                # Apply growth: previous_year * (1 + growth_rate)
-                predicted = int(previous_demand * (1 + self.growth_rate))
+                forecast_year = current_year + i
+                # Apply compound growth from baseline_year to forecast_year
+                years_from_baseline = forecast_year - baseline_year
+                predicted = int(baseline_demand * ((1 + self.growth_rate) ** years_from_baseline))
                 
                 forecast_records.append({
                     'blood_type': str(bt),
@@ -477,8 +478,6 @@ class YearlyForecastGenerator:
                     'predicted_units': max(0, int(predicted)),
                     'growth_rate': float(self.growth_rate)
                 })
-                
-                previous_demand = predicted
         
         return forecast_records
     
