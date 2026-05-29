@@ -8,9 +8,6 @@ DEFAULT_ADMIN_EMAIL = os.environ.get('INVENTORY_ADMIN_EMAIL', 'admin@bloodlink.c
 DEFAULT_ADMIN_PASSWORD = os.environ.get('INVENTORY_ADMIN_PASSWORD', 'Admin123!')
 AUTH_PATHS = [
     '/api/auth/login',
-    '/api/login',
-    '/auth/login',
-    '/login',
 ]
 INVENTORY_PATH = '/api/inventory'
 
