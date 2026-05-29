@@ -217,6 +217,9 @@ If your file is named differently, pass its path using `--data-file`.
 ### Environment Variables
 
 - `PORT`: Server port (default: 8000)
+- `INVENTORY_API_BASE_URL`: Inventory backend host (default: `https://bloodlink-backend-bpll.onrender.com`)
+- `INVENTORY_ADMIN_EMAIL`: Inventory admin login email for stock access
+- `INVENTORY_ADMIN_PASSWORD`: Inventory admin password for stock access
 
 ### Model Configuration
 

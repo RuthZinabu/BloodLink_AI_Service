@@ -7,7 +7,10 @@ from model.forecast_generator import MonthlyForecastGenerator, YearlyForecastGen
 from model.inventory_client import fetch_inventory_stock, InventoryIntegrationError
 from typing import Optional, List
 
-INVENTORY_API_BASE_URL = os.environ.get('INVENTORY_API_BASE_URL', 'http://localhost:8000')
+INVENTORY_API_BASE_URL = os.environ.get(
+    'INVENTORY_API_BASE_URL',
+    'https://bloodlink-backend-bpll.onrender.com'
+)
 
 app = FastAPI(
     title="Blood Demand Forecast API",
