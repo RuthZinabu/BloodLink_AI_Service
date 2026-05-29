@@ -4,7 +4,7 @@ from datetime import datetime
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from model.forecast_generator import MonthlyForecastGenerator, YearlyForecastGenerator
-from model.inventory_client import fetch_inventory_stock, InventoryIntegrationError
+from model.inventory_client import fetch_inventory_stock, fetch_inventory_breakdown, InventoryIntegrationError
 from typing import Optional, List
 
 INVENTORY_API_BASE_URL = os.environ.get(
@@ -142,27 +142,46 @@ def forecast_shortages(
                 "message": "No forecast data available for next month."
             }
 
-        stock = fetch_inventory_stock(base_url=INVENTORY_API_BASE_URL)
+        stock = fetch_inventory_breakdown(base_url=INVENTORY_API_BASE_URL)
         demand_by_blood_type = {}
+        demand_by_component = {}
+        demand_by_blood_and_component = {}
+
         for record in forecast_data:
             bt = record['blood_type']
-            demand_by_blood_type[bt] = demand_by_blood_type.get(bt, 0) + record['predicted_units']
+            ct = record['component_type']
+            units = record['predicted_units']
+            demand_by_blood_type[bt] = demand_by_blood_type.get(bt, 0) + units
+            demand_by_component[ct] = demand_by_component.get(ct, 0) + units
+            blood_components = demand_by_blood_and_component.setdefault(bt, {})
+            blood_components[ct] = blood_components.get(ct, 0) + units
 
-        shortage_by_blood_type = {}
         shortages = []
-        all_blood_types = set(list(demand_by_blood_type.keys()) + list(stock.keys()))
+        shortage_by_blood_and_component = {}
+        all_blood_types = set(list(demand_by_blood_and_component.keys()) + list(stock.keys()))
+
         for bt in all_blood_types:
-            predicted = demand_by_blood_type.get(bt, 0)
-            available = stock.get(bt, 0)
-            shortage = max(0, predicted - available)
-            shortage_by_blood_type[bt] = shortage
-            if shortage > 0:
-                shortages.append({
-                    'blood_type': bt,
-                    'predicted_demand': predicted,
-                    'available_stock': available,
-                    'shortage': shortage
-                })
+            demand_components = demand_by_blood_and_component.get(bt, {})
+            available_components = stock.get(bt, {})
+            shortage_components = {}
+
+            all_components = set(list(demand_components.keys()) + list(available_components.keys()))
+            for ct in all_components:
+                predicted = demand_components.get(ct, 0)
+                available = available_components.get(ct, 0)
+                shortage = max(0, predicted - available)
+                shortage_components[ct] = shortage
+
+                if predicted > 0 or available > 0:
+                    shortages.append({
+                        'blood_type': bt,
+                        'component_type': ct,
+                        'predicted_demand': predicted,
+                        'available_stock': available,
+                        'shortage': shortage
+                    })
+
+            shortage_by_blood_and_component[bt] = shortage_components
 
         return {
             "status": "success",
@@ -173,9 +192,10 @@ def forecast_shortages(
                 "component_type": component_type
             },
             "predicted_by_blood_type": demand_by_blood_type,
-            "available_by_blood_type": stock,
-            "shortage_by_blood_type": shortage_by_blood_type,
-            "current_stock": stock,
+            "predicted_by_component": demand_by_component,
+            "predicted_by_blood_and_component": demand_by_blood_and_component,
+            "available_by_blood_and_component": stock,
+            "shortage_by_blood_and_component": shortage_by_blood_and_component,
             "shortages": shortages,
             "inventory_source": INVENTORY_API_BASE_URL
         }

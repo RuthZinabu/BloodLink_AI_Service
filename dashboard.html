@@ -581,6 +581,7 @@
         const API_URL = 'https://bloodlink-ai-service.onrender.com';
         let monthlyChart = null;
         let yearlyChart = null;
+        const CURRENT_YEAR = new Date().getFullYear();
 
         // Initialize charts
         function initializeCharts() {
@@ -676,11 +677,25 @@
             }
         }
 
+        function applyYearlyForecastRestriction() {
+            const yearlyYearsInput = document.getElementById('yearly-years');
+            if (CURRENT_YEAR === 2025) {
+                yearlyYearsInput.value = 1;
+                yearlyYearsInput.max = 1;
+                yearlyYearsInput.disabled = true;
+                yearlyYearsInput.title = 'Only 2026 is available when current year is 2025';
+            } else {
+                yearlyYearsInput.disabled = false;
+                yearlyYearsInput.max = 10;
+                yearlyYearsInput.title = '';
+            }
+        }
+
         // Load yearly forecast
         async function loadYearlyForecast() {
             const bloodType = document.getElementById('yearly-blood-type').value || null;
             const componentType = document.getElementById('yearly-component-type').value || null;
-            const yearsAhead = document.getElementById('yearly-years').value;
+            const yearsAhead = CURRENT_YEAR === 2025 ? 1 : parseInt(document.getElementById('yearly-years').value, 10);
 
             const params = new URLSearchParams();
             if (bloodType) params.append('blood_type', bloodType);
@@ -1006,14 +1021,7 @@
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
             initializeCharts();
-            // Load default data
-            loadMonthlyForecast();
-            loadYearlyForecast();
-        });
-
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            initializeCharts();
+            applyYearlyForecastRestriction();
             // Load default data
             loadMonthlyForecast();
             loadYearlyForecast();
