@@ -628,6 +628,16 @@
                 <p><code>/forecast/yearly?blood_type=A-&years_ahead=5</code></p>
             </div>
         </div>
+        
+        <div class="panel">
+            <h2>🔒 Admin: Upload Annual Dataset</h2>
+            <div class="info-section">
+                <p>Upload a single-year CSV with columns: <code>date</code>, <code>O+</code>, <code>A+</code>, <code>B+</code>, <code>AB+</code>, <code>O-</code>, <code>A-</code>, <code>B-</code>, <code>AB-</code>.</p>
+                <p><input type="file" id="annual-file" accept=".csv"></p>
+                <p><button onclick="uploadAnnualDataset()">Upload Annual Dataset</button></p>
+                <p id="upload-result" style="margin-top:10px"></p>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -887,6 +897,37 @@
             yearlyChart.data.labels = sortedLabels;
             yearlyChart.data.datasets = datasets;
             yearlyChart.update();
+        }
+
+        // Admin upload function
+        async function uploadAnnualDataset() {
+            const input = document.getElementById('annual-file');
+            const resultEl = document.getElementById('upload-result');
+            resultEl.textContent = '';
+            if (!input.files || input.files.length === 0) {
+                resultEl.textContent = 'Please choose a CSV file to upload.';
+                return;
+            }
+            const file = input.files[0];
+            const token = prompt('Enter admin token (X-Admin-Token):');
+            const fd = new FormData();
+            fd.append('file', file, file.name);
+
+            try {
+                const resp = await fetch(`${API_URL}/model/upload-dataset`, {
+                    method: 'POST',
+                    body: fd,
+                    headers: token ? { 'X-Admin-Token': token } : {}
+                });
+                const data = await resp.json();
+                if (!resp.ok) {
+                    resultEl.textContent = `Upload failed: ${data.detail || data.error || JSON.stringify(data)}`;
+                } else {
+                    resultEl.textContent = `Upload started. Records: ${data.records_processed} Training: ${data.training_started}`;
+                }
+            } catch (err) {
+                resultEl.textContent = `Upload error: ${err.message}`;
+            }
         }
 
         // Update monthly table
