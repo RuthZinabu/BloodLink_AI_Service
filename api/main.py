@@ -45,7 +45,15 @@ yearly_gen = YearlyForecastGenerator()
 
 # Load (or compute and cache) model evaluation metrics at startup
 _demand_df = SimulationDataLoader.load_simulation_data()
-_metrics_cache: dict = get_or_compute_metrics(_demand_df)
+_metrics_cache: dict = get_or_compute_metrics(_demand_df, force=True)
+
+
+def _refresh_metrics_cache():
+    global _demand_df, _metrics_cache
+    _demand_df = SimulationDataLoader.load_simulation_data()
+    _metrics_cache = build_metrics_report(_demand_df)
+    save_metrics(_metrics_cache)
+
 
 @app.get("/", response_class=HTMLResponse)
 def home():
@@ -364,8 +372,12 @@ async def upload_dataset(
     save_path = upload_dir / f'annual_upload_{timestamp}.csv'
     save_path.write_bytes(contents)
 
-    # kick off background processing and training
-    background_tasks.add_task(trainer.process_and_train, str(save_path), 'admin')
+    def process_and_refresh_metrics(upload_path: str, initiated_by: str):
+        trainer.process_and_train(upload_path, initiated_by)
+        _refresh_metrics_cache()
+
+    # kick off background processing, training, and metric refresh
+    background_tasks.add_task(process_and_refresh_metrics, str(save_path), 'admin')
 
     return {
         "message": "Dataset uploaded successfully",

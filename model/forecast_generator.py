@@ -27,55 +27,90 @@ DEFAULT_GROWTH_RATE = 0.08  # 8% annually
 
 
 class SimulationDataLoader:
-    """Load and manage simulation data with component types."""
-    
+    """Load and manage simulation and real demand data with component types."""
+
+    @staticmethod
+    def _normalize_data(df: pd.DataFrame) -> Optional[pd.DataFrame]:
+        if 'ds' in df.columns and 'date' not in df.columns:
+            df = df.rename(columns={'ds': 'date'})
+
+        if 'date' not in df.columns:
+            return None
+
+        df['date'] = pd.to_datetime(df['date'], errors='coerce')
+        if df['date'].isna().any():
+            return None
+
+        long_format = {'date', 'blood_type', 'component_type', 'demand_units'}
+        if long_format.issubset(df.columns):
+            df = df[['date', 'blood_type', 'component_type', 'demand_units']].copy()
+            df['demand_units'] = pd.to_numeric(df['demand_units'], errors='coerce')
+            return df.dropna(subset=['demand_units'])
+
+        broad_format = {'date'} | set(BLOOD_TYPES)
+        if broad_format.issubset(df.columns):
+            melted = df[['date'] + BLOOD_TYPES].copy()
+            melted['date'] = pd.to_datetime(melted['date'], errors='coerce')
+            melted = melted.melt(
+                id_vars=['date'],
+                value_vars=BLOOD_TYPES,
+                var_name='blood_type',
+                value_name='demand_units'
+            )
+            melted['demand_units'] = pd.to_numeric(melted['demand_units'], errors='coerce').fillna(0)
+            melted['component_type'] = 'Total'
+            return melted[['date', 'blood_type', 'component_type', 'demand_units']]
+
+        return None
+
     @staticmethod
     def load_simulation_data(data_path: Optional[str] = None) -> pd.DataFrame:
         """
-        Load simulation data with blood type and component type.
-        
+        Load simulation data or real historical demand data.
+
         Args:
-            data_path: Path to CSV file. If None, uses default location.
-            
+            data_path: Path to CSV file. If None, uses default locations.
+
         Returns:
             DataFrame with columns: date, blood_type, component_type, demand_units
         """
         ROOT_DIR = Path(__file__).resolve().parent.parent
         candidates = []
         if data_path:
-            candidates.append(data_path)
+            candidates.append(Path(data_path))
         else:
             candidates.extend([
+                ROOT_DIR / 'data' / 'blood_demand_data.csv',
                 ROOT_DIR / 'data' / 'download.csv',
                 ROOT_DIR / 'data' / 'simulation_data_with_components.csv',
             ])
+
+        uploads_dir = ROOT_DIR / 'data' / 'uploads'
+        if uploads_dir.exists():
+            upload_candidates = sorted(
+                [p for p in uploads_dir.glob('*.csv') if p.is_file()],
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )
+            candidates = upload_candidates + candidates
 
         for candidate in candidates:
             candidate_path = Path(candidate)
             if not candidate_path.exists():
                 continue
-            df = pd.read_csv(candidate_path)
-            if {'date', 'blood_type', 'component_type', 'demand_units'}.issubset(df.columns):
-                df['date'] = pd.to_datetime(df['date'])
-                return df
+            try:
+                df = pd.read_csv(candidate_path)
+            except Exception:
+                continue
 
-        default_path = ROOT_DIR / 'data' / 'simulation_data_with_components.csv'
-        if not os.path.exists(default_path):
-            raise FileNotFoundError(
-                f"Simulation data not found at {default_path}. "
-                "Please ensure the simulation dataset with component types exists."
-            )
+            normalized = SimulationDataLoader._normalize_data(df)
+            if normalized is not None:
+                return normalized
 
-        df = pd.read_csv(default_path)
-        df['date'] = pd.to_datetime(df['date'])
-        required_cols = ['date', 'blood_type', 'component_type', 'demand_units']
-        missing_cols = [col for col in required_cols if col not in df.columns]
-        if missing_cols:
-            raise ValueError(
-                f"Missing required columns: {missing_cols}. "
-                "DataFrame must have: date, blood_type, component_type, demand_units"
-            )
-        return df
+        raise FileNotFoundError(
+            "No valid demand dataset found. Please place a valid blood demand CSV at "
+            f"{ROOT_DIR / 'data' / 'blood_demand_data.csv'} or "
+            f"{ROOT_DIR / 'data' / 'simulation_data_with_components.csv'}.")
 
 
 class MonthlyForecastGenerator:
