@@ -1,0 +1,44 @@
+{
+  "versions": [
+    {
+      "model_version": "2024_v1",
+      "trained_on": "2026-05-30T13:17:02.788600",
+      "records": 731,
+      "trained_results": {
+        "O+": {
+          "status": "trained",
+          "path": "/workspaces/BloodLink_AI_Service/model_files/prophet_O+_model.pkl"
+        },
+        "A+": {
+          "status": "trained",
+          "path": "/workspaces/BloodLink_AI_Service/model_files/prophet_A+_model.pkl"
+        },
+        "B+": {
+          "status": "trained",
+          "path": "/workspaces/BloodLink_AI_Service/model_files/prophet_B+_model.pkl"
+        },
+        "AB+": {
+          "status": "trained",
+          "path": "/workspaces/BloodLink_AI_Service/model_files/prophet_AB+_model.pkl"
+        },
+        "O-": {
+          "status": "trained",
+          "path": "/workspaces/BloodLink_AI_Service/model_files/prophet_O-_model.pkl"
+        },
+        "A-": {
+          "status": "trained",
+          "path": "/workspaces/BloodLink_AI_Service/model_files/prophet_A-_model.pkl"
+        },
+        "B-": {
+          "status": "trained",
+          "path": "/workspaces/BloodLink_AI_Service/model_files/prophet_B-_model.pkl"
+        },
+        "AB-": {
+          "status": "trained",
+          "path": "/workspaces/BloodLink_AI_Service/model_files/prophet_AB-_model.pkl"
+        }
+      }
+    }
+  ],
+  "latest": "2024_v1"
+}

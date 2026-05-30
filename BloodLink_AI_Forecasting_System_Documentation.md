@@ -23,6 +23,7 @@
 10. [Model Training](#10-model-training)
 11. [Data Flow Diagram](#11-data-flow-diagram)
 12. [Limitations & Constraints](#12-limitations--constraints)
+13. [Annual Dataset Upload & Automatic Retraining](#13-annual-dataset-upload--automatic-retraining)
 
 ---
 
@@ -709,7 +710,7 @@ JavaScript calls GET /forecast/monthly   ─────────────
 | **Forecast horizon** | Predictions are capped at December 2027 (`MAX_FORECAST_YEAR = 2027`). Requests beyond this return an empty dataset. |
 | **Historical data depth** | The current bundled dataset covers only January–March 2023. A richer dataset will improve seasonal accuracy significantly. |
 | **Growth rate is fixed** | The 8% annual growth rate is a constant, not a dynamically learned value. If actual demand trends diverge from 8%, accuracy will degrade over time. |
-| **No real-time updates** | The forecast generators load data once at startup. New CSV data requires a server restart to take effect. |
+| **No real-time updates (partial)** | The forecast generators load CSVs once at startup. New CSV uploads trigger background validation, merge, and Prophet retraining (models are saved to `model_files/`), but the in-memory `MonthlyForecastGenerator` / `YearlyForecastGenerator` instances and the `predictor.py` model imports do not automatically reload their datasets or model objects at runtime. A service restart is required to fully apply merged CSV data and newly trained models to the existing generator instances. |
 | **Inventory connectivity** | The shortage prediction requires a live connection to the external BloodLink backend. If that service is unreachable, shortage data is unavailable. |
 | **No per-facility model** | All forecasts represent aggregate demand. There is no facility-level segmentation. |
 | **Shortage month scope** | Shortage prediction only covers the next calendar month — not multiple months ahead. |
@@ -718,3 +719,70 @@ JavaScript calls GET /forecast/monthly   ─────────────
 ---
 
 *Document prepared for BloodLink AI Service v2.0 — May 2026*
+
+---
+
+## 13. Annual Dataset Upload & Automatic Retraining
+
+This release adds an administrator-facing workflow to upload a yearly blood-demand CSV and trigger an automated validation → merge → retrain pipeline. The feature components are implemented in the API, a new trainer module, and the dashboard UI.
+
+**Files touched**
+- **Trainer:** [model/trainer.py](model/trainer.py) — validation, merge, training, metadata, status
+- **API endpoints:** [api/main.py](api/main.py) — `POST /model/upload-dataset`, `GET /model/status`
+- **Dashboard UI:** [dashboard.html](dashboard.html) — small admin upload panel + JS
+
+- **Model files directory:** [model_files/](model_files/) — trained Prophet model pickles and generated metadata
+
+**High-level flow**
+- **Upload:** Admin uploads a single CSV file (multipart/form-data) via `POST /model/upload-dataset` with header `X-Admin-Token`.
+- **Validate:** The uploaded CSV is validated for required columns, date parsing, and duplicate dates. Required columns are: `date`, `O+`, `A+`, `B+`, `AB+`, `O-`, `A-`, `B-`, `AB-`.
+- **Merge:** The uploaded rows are appended to the historical dataset under `data/blood_demand_data.csv`. Historical rows take precedence; duplicate dates are removed.
+- **Retrain (background):** A background task trains one Prophet model per blood type and saves `prophet_{BT}_model.pkl` into `model_files/`.
+- **Metadata & status:** Training writes `model_files/metadata.json` (version entries like `2027_v1`) and `model_files/training_status.json`.
+
+**Validation rules**
+- **Required columns:** `date` + the eight blood-type columns listed above.
+- **Date format:** Parsed with `pandas.to_datetime`; invalid dates cause rejection.
+- **No duplicate dates:** The upload must not contain duplicate date rows.
+
+**Data merge strategy**
+- Preserve all historical records. When conflicts on `date` occur, the existing historical row is kept (no overwrite) unless you manually replace it.
+- Append only new dates from the uploaded CSV.
+- After merge, the combined CSV is saved to `data/blood_demand_data.csv` and used as the canonical historical file for future training runs.
+
+**Background retraining & model versioning**
+- Retraining runs in the background (FastAPI `BackgroundTasks`) so the API call returns immediately.
+- One Prophet model is trained per blood type and saved to `model_files/prophet_{BT}_model.pkl`.
+- A metadata entry is created per training cycle with fields: `model_version` (e.g. `2027_v1`), `trained_on` (UTC timestamp), and `records` (dataset size).
+
+**Endpoints (summary)**
+- `POST /model/upload-dataset` — multipart form-data file upload. Header: `X-Admin-Token`. Response includes `records_processed` and `training_started`.
+- `GET /model/status` — returns JSON with `latest_model_version`, `last_trained`, and `training_status`.
+
+**Admin UI**
+- The dashboard includes a small upload form (see [dashboard.html](dashboard.html)) that prompts for the admin token and uploads a CSV to the API.
+
+**Configuration / Environment**
+- `ADMIN_TOKEN` — admin upload token (default `admin-secret`). Set this in your deployment environment.
+- `MAX_UPLOAD_MB` — maximum allowed upload size in megabytes (default `10`).
+- `python-multipart` — required by FastAPI to parse multipart form data (install in your environment).
+
+**Examples**
+- Upload using curl (replace token & file path):
+```bash
+curl -X POST "http://localhost:8000/model/upload-dataset" \
+  -H "X-Admin-Token: admin-secret" \
+  -F "file=@/path/to/annual_2027.csv"
+```
+
+- Check training status:
+```bash
+curl "http://localhost:8000/model/status"
+```
+
+**Notes & operational considerations**
+- The current implementation saves merged CSV and retrains Prophet models, but the in-memory forecast generators (`MonthlyForecastGenerator` / `YearlyForecastGenerator`) are initialised at server startup and do not reload automatically. To fully apply merged CSV data to those generators and to reload pickled model objects imported at module load (e.g. `model/predictor.py`), restart the FastAPI service.
+- If you want true hot-reload (no restart) so the forecasting endpoints use newly trained models immediately, I can implement dynamic model reloading and generator refresh logic as a follow-up.
+
+---
+

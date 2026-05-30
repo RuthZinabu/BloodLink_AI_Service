@@ -2,10 +2,14 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, UploadFile, File, BackgroundTasks, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from model.forecast_generator import MonthlyForecastGenerator, YearlyForecastGenerator
+from model import trainer
+import pandas as pd
+import io
+import json
 from model.inventory_client import fetch_inventory_stock, fetch_inventory_breakdown, InventoryIntegrationError
 from typing import Optional, List
 
@@ -19,6 +23,10 @@ app = FastAPI(
     description="Monthly and Yearly blood demand forecasting by blood type and component type",
     version="2.0.0"
 )
+
+# Admin upload config
+ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', 'admin-secret')
+MAX_UPLOAD_MB = int(os.environ.get('MAX_UPLOAD_MB', '10'))
 
 # Allow CORS (for your React frontend)
 app.add_middleware(
@@ -313,3 +321,74 @@ def get_forecast_info():
             "Cryoprecipitate"
         ]
     }
+
+
+@app.post("/model/upload-dataset")
+async def upload_dataset(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    x_admin_token: str = Header(None)
+):
+    """
+    Upload an annual dataset (CSV). Only administrators may upload using header `X-Admin-Token`.
+    """
+    # simple admin auth via header
+    if x_admin_token != ADMIN_TOKEN:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+
+    if not file.filename.lower().endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Only CSV files are accepted")
+
+    contents = await file.read()
+    size_mb = len(contents) / (1024 * 1024)
+    if size_mb > MAX_UPLOAD_MB:
+        raise HTTPException(status_code=400, detail=f"File too large (>{MAX_UPLOAD_MB} MB)")
+
+    # quick row count for response
+    try:
+        df = pd.read_csv(io.BytesIO(contents))
+        records = len(df)
+    except Exception:
+        records = None
+
+    # save upload
+    upload_dir = Path(__file__).parent.parent / 'data' / 'uploads'
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
+    save_path = upload_dir / f'annual_upload_{timestamp}.csv'
+    save_path.write_bytes(contents)
+
+    # kick off background processing and training
+    background_tasks.add_task(trainer.process_and_train, str(save_path), 'admin')
+
+    return {
+        "message": "Dataset uploaded successfully",
+        "records_processed": records,
+        "training_started": True
+    }
+
+
+@app.get("/model/status")
+def model_status():
+    meta_path = Path(__file__).parent.parent / 'model_files' / 'metadata.json'
+    status_path = Path(__file__).parent.parent / 'model_files' / 'training_status.json'
+
+    meta = None
+    status = None
+    if meta_path.exists():
+        try:
+            meta = json.loads(meta_path.read_text())
+        except Exception:
+            meta = None
+    if status_path.exists():
+        try:
+            status = json.loads(status_path.read_text())
+        except Exception:
+            status = None
+
+    response = {
+        'latest_model_version': meta.get('latest') if meta else None,
+        'last_trained': status.get('last_trained') if status else None,
+        'training_status': status.get('training_status') if status else None
+    }
+    return response
