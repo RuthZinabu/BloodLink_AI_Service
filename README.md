@@ -212,6 +212,32 @@ To retrain models with new real-world data:
 
 If your file is named differently, pass its path using `--data-file`.
 
+## Annual Dataset Upload & Automatic Retraining
+
+This release adds an administrator workflow to upload a yearly blood-demand CSV and automatically validate, merge, and retrain Prophet models in the background.
+
+Key points:
+- Upload endpoint: `POST /model/upload-dataset` accepts multipart/form-data CSV and requires the `X-Admin-Token` header.
+- Status endpoint: `GET /model/status` returns `latest_model_version`, `last_trained`, and `training_status`.
+- Required CSV columns: `date`, `O+`, `A+`, `B+`, `AB+`, `O-`, `A-`, `B-`, `AB-`.
+- Merge strategy: uploaded rows are appended to `data/blood_demand_data.csv`; existing historical rows take precedence and duplicate dates are removed.
+- Retraining: one Prophet model per blood type is trained in the background and saved to `model_files/prophet_{BT}_model.pkl`.
+- Metadata: training writes `model_files/metadata.json` (versioning like `2027_v1`) and `model_files/training_status.json`.
+
+Example upload (replace token and file):
+```bash
+curl -X POST "http://localhost:8000/model/upload-dataset" \
+  -H "X-Admin-Token: admin-secret" \
+  -F "file=@/path/to/annual_2027.csv"
+```
+
+Check training status:
+```bash
+curl "http://localhost:8000/model/status"
+```
+
+Operational note: uploads trigger background training but the running FastAPI process initialises forecast generators and model objects at startup. To ensure the API endpoints use newly trained models and merged CSV data immediately, restart the service. If you prefer hot-reload behavior without restart, I can implement dynamic model/generator reloading in a follow-up change.
+
 ## Configuration
 
 ### Environment Variables
