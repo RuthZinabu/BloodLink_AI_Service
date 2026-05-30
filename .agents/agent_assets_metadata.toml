@@ -6,3 +6,9 @@ id = "zQnd3fuS1o1-P_jMi7H66"
 uri = "file://BloodLink_AI_Forecasting_System_Documentation.md"
 type = "text"
 title = "BloodLink AI Forecasting System — Full Documentation"
+
+[[outputs]]
+id = "bvGS09j5c4feECPQUOjd_"
+uri = "file://MODEL_METRICS_API.md"
+type = "text"
+title = "Model Evaluation Metrics — API Documentation"
