@@ -1,0 +1,93 @@
+{
+  "model_version": "2026_v1",
+  "last_evaluated": "2026-05-30",
+  "evaluation_method": "holdout_validation",
+  "data_description": "Each blood-type model is evaluated by training on all periods except the most recent month, then predicting that held-out month using a seasonal index derived from training data.",
+  "overall_system_score": {
+    "average_mae": 38.87,
+    "average_rmse": 45.27,
+    "average_mape": 67.93,
+    "average_r2": -0.725,
+    "status": "Poor"
+  },
+  "grading_scale": {
+    "Excellent": "MAPE < 10%",
+    "Good": "MAPE 10\u201320%",
+    "Acceptable": "MAPE 20\u201350%",
+    "Poor": "MAPE > 50%"
+  },
+  "models": {
+    "O+": {
+      "mae": 122.6,
+      "rmse": 142.48,
+      "mape": 65.19,
+      "r2_score": -0.608,
+      "status": "Poor",
+      "sample_size": 20,
+      "test_period": "2023-03"
+    },
+    "O-": {
+      "mae": 10.2,
+      "rmse": 11.75,
+      "mape": 69.98,
+      "r2_score": -0.803,
+      "status": "Poor",
+      "sample_size": 20,
+      "test_period": "2023-03"
+    },
+    "A+": {
+      "mae": 111.87,
+      "rmse": 130.77,
+      "mape": 65.55,
+      "r2_score": -0.559,
+      "status": "Poor",
+      "sample_size": 20,
+      "test_period": "2023-03"
+    },
+    "A-": {
+      "mae": 7.6,
+      "rmse": 8.85,
+      "mape": 68.52,
+      "r2_score": -0.641,
+      "status": "Poor",
+      "sample_size": 20,
+      "test_period": "2023-03"
+    },
+    "B+": {
+      "mae": 35.07,
+      "rmse": 40.83,
+      "mape": 66.54,
+      "r2_score": -0.634,
+      "status": "Poor",
+      "sample_size": 20,
+      "test_period": "2023-03"
+    },
+    "B-": {
+      "mae": 4.4,
+      "rmse": 5.19,
+      "mape": 69.85,
+      "r2_score": -0.899,
+      "status": "Poor",
+      "sample_size": 20,
+      "test_period": "2023-03"
+    },
+    "AB+": {
+      "mae": 17.07,
+      "rmse": 19.77,
+      "mape": 66.7,
+      "r2_score": -0.728,
+      "status": "Poor",
+      "sample_size": 20,
+      "test_period": "2023-03"
+    },
+    "AB-": {
+      "mae": 2.13,
+      "rmse": 2.49,
+      "mape": 71.11,
+      "r2_score": -0.931,
+      "status": "Poor",
+      "sample_size": 20,
+      "test_period": "2023-03"
+    }
+  }
+}

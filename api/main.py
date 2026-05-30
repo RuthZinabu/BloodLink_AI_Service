@@ -2,11 +2,12 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
-from model.forecast_generator import MonthlyForecastGenerator, YearlyForecastGenerator
+from model.forecast_generator import MonthlyForecastGenerator, YearlyForecastGenerator, SimulationDataLoader
 from model.inventory_client import fetch_inventory_stock, fetch_inventory_breakdown, InventoryIntegrationError
+from model.evaluator import get_or_compute_metrics, build_metrics_report, save_metrics, BLOOD_TYPES
 from typing import Optional, List
 
 INVENTORY_API_BASE_URL = os.environ.get(
@@ -32,6 +33,10 @@ app.add_middleware(
 # Initialize forecast generators
 monthly_gen = MonthlyForecastGenerator()
 yearly_gen = YearlyForecastGenerator()
+
+# Load (or compute and cache) model evaluation metrics at startup
+_demand_df = SimulationDataLoader.load_simulation_data()
+_metrics_cache: dict = get_or_compute_metrics(_demand_df)
 
 @app.get("/", response_class=HTMLResponse)
 def home():
@@ -313,3 +318,98 @@ def get_forecast_info():
             "Cryoprecipitate"
         ]
     }
+
+
+# ========================================
+# Model Metrics Endpoints
+# ========================================
+
+@app.get(
+    "/model/metrics",
+    summary="Global model evaluation metrics",
+    tags=["Model Metrics"],
+    response_description=(
+        "MAE, RMSE, MAPE and R² for every blood-type model, plus an "
+        "overall system performance score."
+    ),
+)
+def get_all_metrics():
+    """
+    Return forecasting evaluation metrics for all blood-type models.
+
+    Metrics are computed via **holdout validation**: all periods except the
+    most recent month are used for training; predictions for that held-out
+    month are compared against actuals.
+
+    ### Grading scale (based on MAPE)
+    | Grade      | MAPE         |
+    |------------|--------------|
+    | Excellent  | < 10 %       |
+    | Good       | 10 – 20 %    |
+    | Acceptable | 20 – 50 %    |
+    | Poor       | > 50 %       |
+    """
+    return _metrics_cache
+
+
+@app.get(
+    "/model/metrics/{blood_type}",
+    summary="Per-blood-type model evaluation metrics",
+    tags=["Model Metrics"],
+    response_description="MAE, RMSE, MAPE, R² and evaluation status for one blood type.",
+)
+def get_metrics_for_blood_type(blood_type: str):
+    """
+    Return forecasting evaluation metrics for a specific blood type.
+
+    **Path parameter:** `blood_type` — one of O+, O−, A+, A−, B+, B−, AB+, AB−
+
+    Example: `GET /model/metrics/O+`
+    """
+    valid_types = [bt.replace("+", "%2B") for bt in BLOOD_TYPES] + BLOOD_TYPES
+    if blood_type not in BLOOD_TYPES:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Blood type '{blood_type}' not found. Valid types: {BLOOD_TYPES}",
+        )
+
+    models = _metrics_cache.get("models", {})
+    if blood_type not in models:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No metrics available for blood type '{blood_type}'.",
+        )
+
+    m = models[blood_type]
+    return {
+        "model_version":     _metrics_cache.get("model_version"),
+        "last_evaluated":    _metrics_cache.get("last_evaluated"),
+        "evaluation_method": _metrics_cache.get("evaluation_method"),
+        "blood_type":        blood_type,
+        "mae":               m.get("mae"),
+        "rmse":              m.get("rmse"),
+        "mape":              m.get("mape"),
+        "r2_score":          m.get("r2_score"),
+        "evaluation_status": m.get("status"),
+        "sample_size":       m.get("sample_size"),
+        "test_period":       m.get("test_period"),
+        "grading_scale":     _metrics_cache.get("grading_scale"),
+    }
+
+
+@app.post(
+    "/model/metrics/refresh",
+    summary="Recompute and refresh model metrics",
+    tags=["Model Metrics"],
+    response_description="Freshly computed metrics for all blood-type models.",
+)
+def refresh_metrics():
+    """
+    Force a full recomputation of all model evaluation metrics and update
+    the on-disk cache.  Call this after uploading a new dataset or
+    retraining models.
+    """
+    global _metrics_cache
+    _metrics_cache = build_metrics_report(_demand_df)
+    save_metrics(_metrics_cache)
+    return {"status": "refreshed", "metrics": _metrics_cache}
