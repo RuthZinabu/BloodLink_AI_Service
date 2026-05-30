@@ -236,22 +236,4 @@ The `_metrics_cache` dict is kept in module-level memory and returned directly b
 
 ---
 
-## Improving Metric Scores
-
-The current scores reflect the bundled simulation dataset, which contains only **3 months of data (January–March 2023)**. With only one holdout month available, the seasonal model has minimal training history, leading to high MAPE values.
-
-**To get production-quality metrics:**
-
-1. Export real multi-year demand data from your blood bank system.
-2. Format it as a CSV with columns: `date`, `blood_type`, `component_type`, `demand_units`.
-3. Save it to `data/download.csv`.
-4. Call the refresh endpoint:
-   ```
-   POST /model/metrics/refresh
-   ```
-
-With 12+ months of history per blood type, the seasonal index will be well-defined and MAPE values are expected to fall into the **Good** or **Excellent** range.
-
----
-
 *Part of BloodLink AI Service v2.0 — Model Evaluation Subsystem*
