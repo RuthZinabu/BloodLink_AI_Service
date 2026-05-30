@@ -8,9 +8,11 @@ import os
 import numpy as np
 import pandas as pd
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, Optional, Tuple
 
-METRICS_PATH = os.path.join("model_files", "metrics.json")
+ROOT_DIR = Path(__file__).resolve().parent.parent
+METRICS_PATH = ROOT_DIR / "model_files" / "metrics.json"
 
 BLOOD_TYPES = ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"]
 
@@ -201,16 +203,16 @@ def build_metrics_report(df: pd.DataFrame, model_version: Optional[str] = None) 
     }
 
 
-def save_metrics(report: dict, path: str = METRICS_PATH) -> None:
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w") as f:
+def save_metrics(report: dict, path: Path = METRICS_PATH) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w") as f:
         json.dump(report, f, indent=2)
 
 
-def load_metrics(path: str = METRICS_PATH) -> Optional[dict]:
-    if not os.path.exists(path):
+def load_metrics(path: Path = METRICS_PATH) -> Optional[dict]:
+    if not path.exists():
         return None
-    with open(path) as f:
+    with path.open() as f:
         return json.load(f)
 
 

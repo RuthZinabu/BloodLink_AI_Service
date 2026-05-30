@@ -5,6 +5,7 @@ Supports filtering by blood type and component type.
 
 import pandas as pd
 import os
+from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta
 import numpy as np
@@ -39,24 +40,26 @@ class SimulationDataLoader:
         Returns:
             DataFrame with columns: date, blood_type, component_type, demand_units
         """
+        ROOT_DIR = Path(__file__).resolve().parent.parent
         candidates = []
         if data_path:
             candidates.append(data_path)
         else:
             candidates.extend([
-                os.path.join('data', 'download.csv'),
-                os.path.join('data', 'simulation_data_with_components.csv'),
+                ROOT_DIR / 'data' / 'download.csv',
+                ROOT_DIR / 'data' / 'simulation_data_with_components.csv',
             ])
 
         for candidate in candidates:
-            if not os.path.exists(candidate):
+            candidate_path = Path(candidate)
+            if not candidate_path.exists():
                 continue
-            df = pd.read_csv(candidate)
+            df = pd.read_csv(candidate_path)
             if {'date', 'blood_type', 'component_type', 'demand_units'}.issubset(df.columns):
                 df['date'] = pd.to_datetime(df['date'])
                 return df
 
-        default_path = os.path.join('data', 'simulation_data_with_components.csv')
+        default_path = ROOT_DIR / 'data' / 'simulation_data_with_components.csv'
         if not os.path.exists(default_path):
             raise FileNotFoundError(
                 f"Simulation data not found at {default_path}. "

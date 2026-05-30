@@ -13,6 +13,7 @@ import json
 from model.inventory_client import fetch_inventory_stock, fetch_inventory_breakdown, InventoryIntegrationError
 from model.evaluator import get_or_compute_metrics, build_metrics_report, save_metrics, BLOOD_TYPES
 from typing import Optional, List
+from model.forecast_generator import SimulationDataLoader
 
 INVENTORY_API_BASE_URL = os.environ.get(
     'INVENTORY_API_BASE_URL',
