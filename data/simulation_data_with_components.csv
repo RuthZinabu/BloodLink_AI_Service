@@ -1,8 +1,8 @@
 date,blood_type,component_type,demand_units
-2023-01-01,O+,Whole Blood,10
-2023-01-01,O+,Packed Red Cells,12
-2023-01-01,O+,Fresh Frozen Plasma,5
-2023-01-01,O+,Platelets Concentrate,3
+2023-01-01,O+,Whole Blood,12
+2023-01-01,O+,Packed Red Cells,14
+2023-01-01,O+,Fresh Frozen Plasma,6
+2023-01-01,O+,Platelets Concentrate,4
 2023-01-01,O+,Cryoprecipitate,2
 2023-01-01,A+,Whole Blood,9
 2023-01-01,A+,Packed Red Cells,11
@@ -19,8 +19,8 @@ date,blood_type,component_type,demand_units
 2023-01-01,AB+,Fresh Frozen Plasma,1
 2023-01-01,AB+,Platelets Concentrate,1
 2023-01-01,AB+,Cryoprecipitate,0
-2023-01-01,O-,Whole Blood,0
-2023-01-01,O-,Packed Red Cells,1
+2023-01-01,O-,Whole Blood,19
+2023-01-01,O-,Packed Red Cells,20
 2023-01-01,O-,Fresh Frozen Plasma,0
 2023-01-01,O-,Platelets Concentrate,0
 2023-01-01,O-,Cryoprecipitate,0
@@ -39,11 +39,11 @@ date,blood_type,component_type,demand_units
 2023-01-01,AB-,Fresh Frozen Plasma,0
 2023-01-01,AB-,Platelets Concentrate,0
 2023-01-01,AB-,Cryoprecipitate,0
-2023-01-02,O+,Whole Blood,15
-2023-01-02,O+,Packed Red Cells,18
-2023-01-02,O+,Fresh Frozen Plasma,7
-2023-01-02,O+,Platelets Concentrate,5
-2023-01-02,O+,Cryoprecipitate,3
+2023-01-02,O+,Whole Blood,18
+2023-01-02,O+,Packed Red Cells,22
+2023-01-02,O+,Fresh Frozen Plasma,8
+2023-01-02,O+,Platelets Concentrate,6
+2023-01-02,O+,Cryoprecipitate,4
 2023-01-02,A+,Whole Blood,13
 2023-01-02,A+,Packed Red Cells,16
 2023-01-02,A+,Fresh Frozen Plasma,6
@@ -59,8 +59,8 @@ date,blood_type,component_type,demand_units
 2023-01-02,AB+,Fresh Frozen Plasma,1
 2023-01-02,AB+,Platelets Concentrate,1
 2023-01-02,AB+,Cryoprecipitate,0
-2023-01-02,O-,Whole Blood,1
-2023-01-02,O-,Packed Red Cells,1
+2023-01-02,O-,Whole Blood,39
+2023-01-02,O-,Packed Red Cells,20
 2023-01-02,O-,Fresh Frozen Plasma,0
 2023-01-02,O-,Platelets Concentrate,0
 2023-01-02,O-,Cryoprecipitate,0
@@ -79,11 +79,11 @@ date,blood_type,component_type,demand_units
 2023-01-02,AB-,Fresh Frozen Plasma,0
 2023-01-02,AB-,Platelets Concentrate,0
 2023-01-02,AB-,Cryoprecipitate,0
-2023-02-01,O+,Whole Blood,280
-2023-02-01,O+,Packed Red Cells,340
-2023-02-01,O+,Fresh Frozen Plasma,140
-2023-02-01,O+,Platelets Concentrate,95
-2023-02-01,O+,Cryoprecipitate,55
+2023-02-01,O+,Whole Blood,336
+2023-02-01,O+,Packed Red Cells,408
+2023-02-01,O+,Fresh Frozen Plasma,168
+2023-02-01,O+,Platelets Concentrate,114
+2023-02-01,O+,Cryoprecipitate,66
 2023-02-01,A+,Whole Blood,260
 2023-02-01,A+,Packed Red Cells,310
 2023-02-01,A+,Fresh Frozen Plasma,120
@@ -99,11 +99,11 @@ date,blood_type,component_type,demand_units
 2023-02-01,AB+,Fresh Frozen Plasma,18
 2023-02-01,AB+,Platelets Concentrate,12
 2023-02-01,AB+,Cryoprecipitate,8
-2023-02-01,O-,Whole Blood,20
-2023-02-01,O-,Packed Red Cells,25
-2023-02-01,O-,Fresh Frozen Plasma,10
-2023-02-01,O-,Platelets Concentrate,7
-2023-02-01,O-,Cryoprecipitate,4
+2023-02-01,O-,Whole Blood,400
+2023-02-01,O-,Packed Red Cells,500
+2023-02-01,O-,Fresh Frozen Plasma,200
+2023-02-01,O-,Platelets Concentrate,140
+2023-02-01,O-,Cryoprecipitate,80
 2023-02-01,A-,Whole Blood,15
 2023-02-01,A-,Packed Red Cells,20
 2023-02-01,A-,Fresh Frozen Plasma,8
@@ -119,11 +119,11 @@ date,blood_type,component_type,demand_units
 2023-02-01,AB-,Fresh Frozen Plasma,2
 2023-02-01,AB-,Platelets Concentrate,1
 2023-02-01,AB-,Cryoprecipitate,1
-2023-03-01,O+,Whole Blood,290
-2023-03-01,O+,Packed Red Cells,350
-2023-03-01,O+,Fresh Frozen Plasma,145
-2023-03-01,O+,Platelets Concentrate,100
-2023-03-01,O+,Cryoprecipitate,58
+2023-03-01,O+,Whole Blood,348
+2023-03-01,O+,Packed Red Cells,420
+2023-03-01,O+,Fresh Frozen Plasma,174
+2023-03-01,O+,Platelets Concentrate,120
+2023-03-01,O+,Cryoprecipitate,70
 2023-03-01,A+,Whole Blood,270
 2023-03-01,A+,Packed Red Cells,320
 2023-03-01,A+,Fresh Frozen Plasma,125
@@ -139,11 +139,11 @@ date,blood_type,component_type,demand_units
 2023-03-01,AB+,Fresh Frozen Plasma,20
 2023-03-01,AB+,Platelets Concentrate,14
 2023-03-01,AB+,Cryoprecipitate,8
-2023-03-01,O-,Whole Blood,22
-2023-03-01,O-,Packed Red Cells,28
-2023-03-01,O-,Fresh Frozen Plasma,11
-2023-03-01,O-,Platelets Concentrate,8
-2023-03-01,O-,Cryoprecipitate,5
+2023-03-01,O-,Whole Blood,440
+2023-03-01,O-,Packed Red Cells,560
+2023-03-01,O-,Fresh Frozen Plasma,220
+2023-03-01,O-,Platelets Concentrate,160
+2023-03-01,O-,Cryoprecipitate,100
 2023-03-01,A-,Whole Blood,16
 2023-03-01,A-,Packed Red Cells,22
 2023-03-01,A-,Fresh Frozen Plasma,9

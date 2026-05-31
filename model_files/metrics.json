@@ -1,13 +1,13 @@
 {
   "model_version": "2026_v1",
-  "last_evaluated": "2026-05-31",
+  "last_evaluated": "2026-06-03",
   "evaluation_method": "holdout_validation",
   "data_description": "Each blood-type model is evaluated by training on all periods except the most recent month, then predicting that held-out month using a seasonal index derived from training data.",
   "overall_system_score": {
-    "average_mae": 0.21,
-    "average_rmse": 0.28,
-    "average_mape": 28.99,
-    "average_r2": 0.431,
+    "average_mae": 0.32,
+    "average_rmse": 0.42,
+    "average_mape": 23.76,
+    "average_r2": 0.518,
     "status": "Acceptable"
   },
   "grading_scale": {
@@ -18,20 +18,20 @@
   },
   "models": {
     "O+": {
-      "mae": 0.66,
-      "rmse": 0.86,
-      "mape": 22.74,
-      "r2_score": 0.834,
+      "mae": 0.81,
+      "rmse": 1.05,
+      "mape": 23.38,
+      "r2_score": 0.827,
       "status": "Acceptable",
       "sample_size": 6230,
       "test_period": "2026-05"
     },
     "O-": {
-      "mae": 0.09,
-      "rmse": 0.11,
-      "mape": 64.52,
-      "r2_score": 0.136,
-      "status": "Poor",
+      "mae": 0.81,
+      "rmse": 1.05,
+      "mape": 22.02,
+      "r2_score": 0.841,
+      "status": "Acceptable",
       "sample_size": 6230,
       "test_period": "2026-05"
     },
