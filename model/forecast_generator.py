@@ -151,13 +151,15 @@ class MonthlyForecastGenerator:
         if combo_data.empty:
             return pd.Series(1.0, index=range(1, 13))
 
-        month_avg = combo_data.groupby('month')['demand_units'].mean()
-        if month_avg.empty:
+        month_avg = combo_data.groupby('month')['demand_units'].mean().dropna()
+        if month_avg.empty or month_avg.mean() == 0 or pd.isna(month_avg.mean()):
             return pd.Series(1.0, index=range(1, 13))
 
         seasonal_index = month_avg / month_avg.mean()
         full_index = pd.Series(1.0, index=range(1, 13))
         for month, value in seasonal_index.items():
+            if pd.isna(value):
+                value = 1.0
             full_index.loc[month] = max(value, 0.1)
         return full_index
 
@@ -222,7 +224,11 @@ class MonthlyForecastGenerator:
             else:
                 base_demand = combo_data['demand_units'].mean()
 
-            base_demand = max(base_demand, combo_data['demand_units'].mean(), 1)
+            # Guard against NaN before any arithmetic
+            if pd.isna(base_demand):
+                base_demand = combo_data['demand_units'].dropna().mean()
+            if pd.isna(base_demand) or base_demand <= 0:
+                base_demand = 1.0
 
             forecast_year = start_year
             forecast_month = start_month
@@ -234,6 +240,8 @@ class MonthlyForecastGenerator:
                         forecast_year += 1
 
                 month_factor = monthly_profile.get(forecast_month, 1.0)
+                if pd.isna(month_factor):
+                    month_factor = 1.0
                 growth_factor = (1 + DEFAULT_GROWTH_RATE) ** (i / 12)
                 predicted = int(round(base_demand * month_factor * growth_factor))
 
@@ -488,26 +496,22 @@ class YearlyForecastGenerator:
             # Get baseline (last known year)
             baseline_year = combo_data['year'].max()
             baseline_demand = combo_data.loc[combo_data['year'] == baseline_year, 'total_demand'].values[0]
-            
-            # Calculate growth trend from available data
-            if len(combo_data) > 1:
-                # Use simple linear trend
-                years_span = combo_data['year'].max() - combo_data['year'].min()
-                demand_change = combo_data['total_demand'].max() - combo_data['total_demand'].min()
-                if years_span > 0:
-                    annual_change_rate = demand_change / (combo_data['total_demand'].min() * years_span)
-                else:
-                    annual_change_rate = self.growth_rate
-            else:
-                annual_change_rate = self.growth_rate
-            
+
+            # Guard against NaN / zero baseline before any arithmetic
+            if pd.isna(baseline_demand) or baseline_demand <= 0:
+                fallback = combo_data['total_demand'].dropna()
+                baseline_demand = float(fallback.mean()) if not fallback.empty else 1.0
+            if pd.isna(baseline_demand) or baseline_demand <= 0:
+                baseline_demand = 1.0
+
             # Generate forecast for years_ahead starting from current_year + 1
             current_year = datetime.today().year
             for i in range(1, years_ahead + 1):
                 forecast_year = current_year + i
                 # Apply compound growth from baseline_year to forecast_year
                 years_from_baseline = forecast_year - baseline_year
-                predicted = int(baseline_demand * ((1 + self.growth_rate) ** years_from_baseline))
+                raw = baseline_demand * ((1 + self.growth_rate) ** years_from_baseline)
+                predicted = int(round(raw)) if not (pd.isna(raw) or np.isinf(raw)) else 0
                 
                 forecast_records.append({
                     'blood_type': str(bt),

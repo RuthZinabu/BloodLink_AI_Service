@@ -1,6 +1,6 @@
 {
   "model_version": "2026_v1",
-  "last_evaluated": "2026-05-30",
+  "last_evaluated": "2026-05-31",
   "evaluation_method": "holdout_validation",
   "data_description": "Each blood-type model is evaluated by training on all periods except the most recent month, then predicting that held-out month using a seasonal index derived from training data.",
   "overall_system_score": {

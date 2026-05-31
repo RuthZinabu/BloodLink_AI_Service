@@ -10,3 +10,4 @@ pydantic
 requests
 python-multipart
 plotly
+python-multipart
