@@ -52,6 +52,11 @@ def forecast(days=30):
         shortage_alerts = []
         for bt in blood_types:
             predicted = all_forecasts[bt][i]
+            if bt == "O-":
+                predicted = int(round(predicted * 1.4))
+            elif bt == "O+":
+                predicted = int(round(predicted * 1.2))
+
             record[bt] = predicted
 
             stock = current_stock.get(bt, 0)
