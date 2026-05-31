@@ -266,6 +266,13 @@ class MonthlyForecastGenerator:
                 growth_factor = (1 + DEFAULT_GROWTH_RATE) ** (i / 12)
                 predicted = int(round(base_demand * month_factor * growth_factor))
 
+                # Boost monthly monthly O- demand to make it the highest-priority blood type,
+                # then O+ slightly higher, while keeping other blood type forecasts unchanged.
+                if bt == "O-":
+                    predicted = int(round(predicted * 1.4))
+                elif bt == "O+":
+                    predicted = int(round(predicted * 1.2))
+
                 forecast_records.append({
                     'blood_type': str(bt),
                     'component_type': str(ct),
