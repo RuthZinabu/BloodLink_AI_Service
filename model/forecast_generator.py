@@ -20,6 +20,16 @@ COMPONENT_TYPES = [
     "Cryoprecipitate"
 ]
 
+# Distribution split used when source data has no component-type breakdown.
+# Proportions derived from the simulation reference dataset.
+COMPONENT_SPLIT = {
+    "Whole Blood":           0.3125,
+    "Packed Red Cells":      0.3750,
+    "Fresh Frozen Plasma":   0.1563,
+    "Platelets Concentrate": 0.0937,
+    "Cryoprecipitate":       0.0625,
+}
+
 # Forecast constraints
 MAX_FORECAST_YEAR = 2027
 # Default growth rate for yearly projection
@@ -58,8 +68,17 @@ class SimulationDataLoader:
                 value_name='demand_units'
             )
             melted['demand_units'] = pd.to_numeric(melted['demand_units'], errors='coerce').fillna(0)
-            melted['component_type'] = 'Total'
-            return melted[['date', 'blood_type', 'component_type', 'demand_units']]
+            # Expand each row into one row per component type using the standard split
+            rows = []
+            for _, row in melted.iterrows():
+                for comp, frac in COMPONENT_SPLIT.items():
+                    rows.append({
+                        'date':           row['date'],
+                        'blood_type':     row['blood_type'],
+                        'component_type': comp,
+                        'demand_units':   round(row['demand_units'] * frac, 4),
+                    })
+            return pd.DataFrame(rows, columns=['date', 'blood_type', 'component_type', 'demand_units'])
 
         return None
 
@@ -79,10 +98,12 @@ class SimulationDataLoader:
         if data_path:
             candidates.append(Path(data_path))
         else:
+            # Prefer files that contain component-type breakdowns first,
+            # then fall back to broad-format files.
             candidates.extend([
-                ROOT_DIR / 'data' / 'blood_demand_data.csv',
-                ROOT_DIR / 'data' / 'download.csv',
                 ROOT_DIR / 'data' / 'simulation_data_with_components.csv',
+                ROOT_DIR / 'data' / 'download.csv',
+                ROOT_DIR / 'data' / 'blood_demand_data.csv',
             ])
 
         uploads_dir = ROOT_DIR / 'data' / 'uploads'

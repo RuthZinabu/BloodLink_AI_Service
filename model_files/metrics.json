@@ -4,10 +4,10 @@
   "evaluation_method": "holdout_validation",
   "data_description": "Each blood-type model is evaluated by training on all periods except the most recent month, then predicting that held-out month using a seasonal index derived from training data.",
   "overall_system_score": {
-    "average_mae": 1.08,
-    "average_rmse": 1.18,
+    "average_mae": 0.21,
+    "average_rmse": 0.28,
     "average_mape": 28.99,
-    "average_r2": -0.003,
+    "average_r2": 0.431,
     "status": "Acceptable"
   },
   "grading_scale": {
@@ -18,48 +18,48 @@
   },
   "models": {
     "O+": {
-      "mae": 3.3,
-      "rmse": 3.64,
+      "mae": 0.66,
+      "rmse": 0.86,
       "mape": 22.74,
-      "r2_score": -0.009,
+      "r2_score": 0.834,
       "status": "Acceptable",
-      "sample_size": 1246,
+      "sample_size": 6230,
       "test_period": "2026-05"
     },
     "O-": {
-      "mae": 0.46,
-      "rmse": 0.48,
+      "mae": 0.09,
+      "rmse": 0.11,
       "mape": 64.52,
-      "r2_score": -0.001,
+      "r2_score": 0.136,
       "status": "Poor",
-      "sample_size": 1246,
+      "sample_size": 6230,
       "test_period": "2026-05"
     },
     "A+": {
-      "mae": 3.11,
-      "rmse": 3.44,
+      "mae": 0.62,
+      "rmse": 0.81,
       "mape": 23.21,
-      "r2_score": -0.007,
+      "r2_score": 0.827,
       "status": "Acceptable",
-      "sample_size": 1246,
+      "sample_size": 6230,
       "test_period": "2026-05"
     },
     "A-": {
-      "mae": 0.46,
-      "rmse": 0.48,
+      "mae": 0.09,
+      "rmse": 0.11,
       "mape": 64.52,
-      "r2_score": -0.001,
+      "r2_score": 0.136,
       "status": "Poor",
-      "sample_size": 1246,
+      "sample_size": 6230,
       "test_period": "2026-05"
     },
     "B+": {
-      "mae": 0.84,
-      "rmse": 0.95,
+      "mae": 0.17,
+      "rmse": 0.22,
       "mape": 22.62,
-      "r2_score": -0.005,
+      "r2_score": 0.827,
       "status": "Acceptable",
-      "sample_size": 1246,
+      "sample_size": 6230,
       "test_period": "2026-05"
     },
     "B-": {
@@ -68,16 +68,16 @@
       "mape": 0.0,
       "r2_score": 0.0,
       "status": "Excellent",
-      "sample_size": 1246,
+      "sample_size": 6230,
       "test_period": "2026-05"
     },
     "AB+": {
-      "mae": 0.46,
-      "rmse": 0.48,
+      "mae": 0.09,
+      "rmse": 0.11,
       "mape": 34.3,
-      "r2_score": -0.001,
+      "r2_score": 0.688,
       "status": "Acceptable",
-      "sample_size": 1246,
+      "sample_size": 6230,
       "test_period": "2026-05"
     },
     "AB-": {
@@ -86,7 +86,7 @@
       "mape": 0.0,
       "r2_score": 0.0,
       "status": "Excellent",
-      "sample_size": 1246,
+      "sample_size": 6230,
       "test_period": "2026-05"
     }
   }
